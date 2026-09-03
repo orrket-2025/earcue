@@ -185,6 +185,7 @@ select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-
 .status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--text-dim);min-height:24px;padding:6px 2px}
 .status .chip{display:inline-flex;align-items:center;gap:7px;letter-spacing:.04em}
 .status .chip.on{color:var(--text)}
+.status .chip.warn{color:#FFB0A9}
 .transport{display:grid;grid-template-columns:1fr 1fr 1.35fr;margin-top:8px;border-radius:14px;padding:3px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
 .transport .btn{border-radius:11px;height:62px;font-size:15.5px;padding:0 6px;white-space:nowrap;gap:6px;box-shadow:inset 0 1px 0 var(--edge-light),inset 0 -1px 0 rgba(0,0,0,.35),0 3px 8px rgba(0,0,0,.35)}
 .transport .btn:active,.transport .btn.is-down{box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
@@ -357,6 +358,8 @@ const mkSentences = (arr) => arr.map((text) => ({ id: uid(), text }));
 
 /* ---------------- TTS engine ---------------- */
 const synth = window.speechSynthesis;
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const IS_DESKTOP_CHROME = /Chrome\//.test(navigator.userAgent) && !/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
 let voices = [];
 function loadVoices() { if (!synth) return; voices = synth.getVoices(); }
 if (synth) { loadVoices(); synth.onvoiceschanged = () => { loadVoices(); if (state.view === 'stage' && sheetOpen) renderSheet(); }; }
@@ -367,7 +370,7 @@ function pickVoice() {
 }
 
 const tts = {
-  speaking: false, utter: null, t0: 0, charsPerSec: 5.5, // ko-KR calibrates itself as it speaks
+  speaking: false, utter: null, t0: 0, charsPerSec: 5.5, lastError: '', // ko-KR calibrates itself as it speaks
   raf: 0, keepAlive: 0,
   speak(text, { onStart, onProgress, onEnd } = {}) {
     this.stop();
@@ -402,12 +405,12 @@ const tts = {
         this.raf = requestAnimationFrame(tick);
       };
       this.raf = requestAnimationFrame(tick);
-      // Chrome desktop stops long utterances after ~15s unless nudged.
-      this.keepAlive = setInterval(() => { if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); } }, 10000);
+      // Desktop Chrome stops long utterances after ~15s unless nudged. Android's pause() cuts playback, so never do it there.
+      if (IS_DESKTOP_CHROME) this.keepAlive = setInterval(() => { if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); } }, 10000);
     };
     u.onboundary = (e) => { if (typeof e.charIndex === 'number') boundaryIdx = e.charIndex + (e.charLength || 0); };
-    u.onend = () => finish(false);
-    u.onerror = (e) => finish(e.error === 'interrupted' || e.error === 'canceled');
+    u.onend = () => { this.lastError = ''; finish(false); };
+    u.onerror = (e) => { this.lastError = e.error || 'error'; finish(e.error === 'interrupted' || e.error === 'canceled'); };
     this.utter = u; this.t0 = performance.now();
     synth.speak(u);
     // Some Android builds never fire onstart; treat as started after a tick.
@@ -424,39 +427,49 @@ const tts = {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const normalize = (s) => String(s).toLowerCase().replace(/[\s.,!?。！？、·…"'“”‘’()\[\]\-–—:;]/g, '');
 function bigrams(s) { const out = []; for (let i = 0; i < s.length - 1; i++) out.push(s.slice(i, i + 2)); return out; }
+// Korean sentences share endings ("~습니다"), so the last 4 chars alone prove little. Score the last 14 chars
+// and require the part before the ending to match too.
 function tailMatch(sentence, heard) {
-  const s = normalize(sentence); const h = normalize(heard).slice(-60);
-  if (!s || !h) return 0;
-  const tail = s.slice(-Math.min(10, s.length));
-  if (tail.length < 4) return h.endsWith(tail) ? 1 : 0;
+  const s = normalize(sentence); const h = normalize(heard).slice(-80);
+  if (!s || h.length < 4) return 0;
+  const tail = s.slice(-Math.min(14, s.length));
+  if (tail.length < 5) return h.endsWith(tail) ? 1 : 0;
   const bg = bigrams(tail); const hit = bg.filter((b) => h.includes(b)).length;
+  const head = bigrams(tail.slice(0, Math.max(2, tail.length - 4)));
+  const headHit = head.filter((b) => h.includes(b)).length;
+  if (head.length && headHit / head.length < 0.5) return 0;
   return hit / bg.length;
 }
+/* The recognizer and the earpiece fight over audio on Android (mic focus, Bluetooth HFP switch), so the
+   recognizer runs only between reads: it is suspended while TTS speaks and resumed when the read ends. */
 const listener = {
-  rec: null, on: false, heard: '', restartTimer: 0, onMatch: null,
+  rec: null, on: false, suspended: false, heard: '', skip: 0, restartTimer: 0, onMatch: null,
   start() {
     if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않습니다'); return false; }
     if (this.rec) return true;
     const r = new SR();
     r.lang = 'ko-KR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
     r.onresult = (e) => {
-      let finalText = '', interim = '';
-      for (let i = 0; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += t; else interim += t; }
-      this.heard = (finalText + ' ' + interim).trim();
+      let text = '';
+      for (let i = this.skip; i < e.results.length; i++) text += e.results[i][0].transcript + ' ';
+      this.heard = text.trim();
       this.onMatch && this.onMatch(this.heard);
     };
     r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('마이크 사용이 허용되지 않았습니다'); this.stop(); settings.listen = false; saveSettings(); renderStageStatus(); } };
-    r.onend = () => { if (this.on) { clearTimeout(this.restartTimer); this.restartTimer = setTimeout(() => { try { r.start(); } catch {} }, 300); } };
-    this.rec = r; this.on = true;
+    r.onend = () => { this.skip = 0; if (this.on && !this.suspended) { clearTimeout(this.restartTimer); this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) { try { r.start(); } catch {} } }, 300); } };
+    this.rec = r; this.on = true; this.suspended = false; this.skip = 0;
     try { r.start(); } catch {}
     return true;
   },
-  reset() { this.heard = ''; if (this.rec && this.on) { try { this.rec.abort(); } catch {} } },
-  stop() { this.on = false; clearTimeout(this.restartTimer); if (this.rec) { try { this.rec.onend = null; this.rec.abort(); } catch {} } this.rec = null; this.heard = ''; },
+  // new sentence: forget what was heard so far without restarting the recognizer
+  mark() { this.heard = ''; },
+  suspend() { if (!this.rec || this.suspended) return; this.suspended = true; clearTimeout(this.restartTimer); try { this.rec.abort(); } catch {} },
+  resume() { if (!this.rec || !this.suspended) return; this.suspended = false; this.heard = ''; this.skip = 0; clearTimeout(this.restartTimer); this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) { try { this.rec.start(); } catch {} } }, IS_ANDROID ? 400 : 150); },
+  stop() { this.on = false; this.suspended = false; clearTimeout(this.restartTimer); if (this.rec) { try { this.rec.onend = null; this.rec.abort(); } catch {} } this.rec = null; this.heard = ''; this.skip = 0; },
 };
 
 /* ---------------- app state / router ---------------- */
-const state = { view: 'home', scriptId: null, idx: 0, progress: 0, startedAt: 0, autoTimer: 0, autoDue: 0, lastKey: '', installPrompt: null, learning: null };
+const state = { view: 'home', scriptId: null, idx: 0, progress: 0, startedAt: 0, autoTimer: 0, autoDue: 0, lastKey: '', installPrompt: null, learning: null, ttsNote: '' };
 let sheetOpen = false;
 let wakeLock = null;
 
@@ -722,7 +735,8 @@ function renderStageStatus() {
   const chips = [];
   chips.push(`<span class="chip ${tts.speaking ? 'on' : ''}"><i class="led ${tts.speaking ? 'lamp' : ''}"></i>${tts.speaking ? '읽는 중' : '대기'}</span>`);
   if (settings.auto) chips.push(`<span class="chip on" id="autoChip"><i class="led lamp ${state.autoDue ? 'blink' : ''}"></i>자동 <span id="autoCount">${state.autoDue ? ((state.autoDue - performance.now()) / 1000).toFixed(1) + 's' : settings.lead + 's'}</span></span>`);
-  if (settings.listen) chips.push(`<span class="chip on"><i class="led ${listener.on ? 'next' : ''}"></i>말 인식 ${listener.on ? '켜짐' : '꺼짐'}</span>`);
+  if (settings.listen) chips.push(`<span class="chip on"><i class="led ${listener.on && !listener.suspended ? 'next' : ''}"></i>말 인식 ${!listener.on ? '꺼짐' : listener.suspended ? '대기' : '듣는 중'}</span>`);
+  if (state.ttsNote) chips.push(`<span class="chip warn">${esc(state.ttsNote)}</span>`);
   el.innerHTML = chips.join('');
   const led = $('#ledNow'); if (led) led.classList.toggle('blink', tts.speaking);
 }
@@ -736,7 +750,7 @@ function tickElapsed() {
 /* transport actions */
 function act(kind) {
   const s = current(); if (!s || state.view !== 'stage') return;
-  cancelAuto();
+  cancelAuto(); state.ttsNote = '';
   if (kind === 'next') { if (state.idx >= s.sentences.length - 1) { finishTalk(); return; } state.idx++; }
   if (kind === 'prev') { state.idx = Math.max(0, state.idx - 1); }
   updateCue(); speakCurrent();
@@ -746,14 +760,15 @@ function flashButton(kind) { const b = $('#' + kind); if (!b) return; b.classLis
 function speakCurrent() {
   const s = current(); const text = s.sentences[state.idx].text.trim();
   if (!state.startedAt) state.startedAt = performance.now();
-  listener.reset();
-  if (!text) { setProgress(1); return; }
+  listener.mark(); listener.suspend();
+  if (!text) { setProgress(1); listener.resume(); return; }
   tts.speak(text, {
     onStart: () => renderStageStatus(),
     onProgress: setProgress,
     onEnd: ({ cancelled, dur, rate }) => {
-      if (cancelled) return;
-      setProgress(1); renderStageStatus();
+      if (cancelled) { if (tts.lastError && tts.lastError !== 'canceled') { state.ttsNote = '읽기 중단: ' + tts.lastError; renderStageStatus(); } return; }
+      state.ttsNote = tts.lastError ? '읽기 오류: ' + tts.lastError : '';
+      setProgress(1); listener.resume(); renderStageStatus();
       if (settings.auto && state.idx < s.sentences.length - 1) scheduleAuto(dur, rate);
     },
   });
@@ -793,8 +808,9 @@ function toggleListen(force) {
 }
 function onHeard(heard) {
   const s = current(); if (!s || state.view !== 'stage') return;
+  if (tts.speaking) return;
   const score = tailMatch(s.sentences[state.idx].text, heard);
-  if (score >= 0.6) { listener.heard = ''; act('next'); }
+  if (score >= 0.7) { listener.heard = ''; act('next'); }
 }
 
 /* rate knob */
