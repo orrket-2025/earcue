@@ -530,6 +530,35 @@ const eleven = {
     return res.blob();
   },
 };
+/* ElevenLabs accepts at most 25 sample files per voice, so the per-sentence takes are decoded, joined with a
+   short pause, resampled to 22.05 kHz mono and re-encoded as WAV files of about 110 s each. */
+async function mergeSamples(blobs, onNote, maxSec = 110) {
+  const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) throw new Error('이 브라우저는 오디오 합치기를 지원하지 않습니다');
+  const ctx = new Ctx(); const sr = 22050; const gap = new Float32Array(Math.round(sr * 0.35));
+  const files = []; let cur = [], curLen = 0, i = 0;
+  const flush = () => { if (!cur.length) return; const out = new Float32Array(curLen); let o = 0; for (const c of cur) { out.set(c, o); o += c.length; } files.push(wavBlob(out, sr)); cur = []; curLen = 0; };
+  for (const b of blobs) {
+    i++; onNote && onNote(`샘플 합치는 중 ${i}/${blobs.length}`);
+    let buf; try { buf = await ctx.decodeAudioData(await b.arrayBuffer()); } catch { continue; }
+    const mono = new Float32Array(buf.length);
+    for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let k = 0; k < d.length; k++) mono[k] += d[k] / buf.numberOfChannels; }
+    const ratio = buf.sampleRate / sr, n = Math.floor(mono.length / ratio), rs = new Float32Array(n);
+    for (let k = 0; k < n; k++) { const x = k * ratio, x0 = Math.floor(x), t = x - x0; rs[k] = mono[x0] * (1 - t) + (mono[Math.min(x0 + 1, mono.length - 1)] || 0) * t; }
+    if (curLen + rs.length > maxSec * sr) flush();
+    cur.push(rs, gap); curLen += rs.length + gap.length;
+  }
+  flush(); ctx.close().catch(() => {});
+  if (!files.length) throw new Error('녹음을 읽을 수 없습니다');
+  return files;
+}
+function wavBlob(f32, sr) {
+  const n = f32.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, f32[i])) * 32767, true);
+  return new Blob([b], { type: 'audio/wav' });
+}
 function blobDuration(blob, fallbackMs) {
   return new Promise((res) => {
     const url = URL.createObjectURL(blob); const a = new Audio(); let done = false;
@@ -925,7 +954,7 @@ function renderAI() {
         <div class="row between"><h2>목소리</h2><button class="btn small ghost" id="elReload">목록 새로고침</button></div>
         <div class="select-wrap"><select class="field" id="elVoice" aria-label="목소리 선택"><option value="">${settings.elVoiceName ? esc(settings.elVoiceName) : '불러오는 중…'}</option></select></div>
         <div class="panel stack">
-          <div><div class="t">녹음한 문장으로 내 목소리 만들기</div><small class="muted">지금까지 직접 녹음한 ${recSecs.toFixed(0)}초를 학습 샘플로 씁니다 (60초 이상 권장, 최소 30초)</small></div>
+          <div><div class="t">녹음한 문장으로 내 목소리 만들기</div><small class="muted">직접 녹음한 ${recSecs.toFixed(0)}초를 하나로 이어 붙여 학습 샘플로 올립니다 (60초 이상 권장, 최소 30초)</small></div>
           <div class="row"><input class="field grow" id="cloneName" value="내 목소리" aria-label="목소리 이름"><button class="btn lamp" id="cloneBtn" ${recSecs >= 30 ? '' : 'disabled'}>${ICON.mic}만들기</button></div>
           <p class="hint">${recSecs >= 30 ? '조용한 곳에서 녹음한 문장일수록 결과가 좋습니다. 만들면 목소리 목록에 추가되고 자동으로 선택됩니다.' : '먼저 "내 목소리 녹음"에서 문장을 더 녹음해 주세요. 30초가 넘으면 이 버튼이 켜집니다.'}</p>
         </div>
@@ -972,8 +1001,12 @@ function renderAI() {
   $('#cloneBtn').onclick = async () => {
     const name = $('#cloneName').value.trim() || '내 목소리';
     const blobs = s.sentences.map((x) => recs.get(x.id)).filter((r) => r && r.kind === 'rec').map((r) => r.blob);
-    const btn = $('#cloneBtn'); btn.disabled = true; btn.textContent = '만드는 중…';
-    try { const out = await eleven.clone(name, blobs); settings.elVoiceId = out.voice_id; settings.elVoiceName = name; saveSettings(); toast(`"${name}" 목소리를 만들었습니다`); renderAI(); }
+    const btn = $('#cloneBtn'); btn.disabled = true; btn.textContent = '준비 중…';
+    try {
+      const files = await mergeSamples(blobs, (t) => { btn.textContent = t; });
+      btn.textContent = `업로드 중 (${files.length}개 파일)…`;
+      const out = await eleven.clone(name, files); settings.elVoiceId = out.voice_id; settings.elVoiceName = name; saveSettings(); toast(`"${name}" 목소리를 만들었습니다`); renderAI();
+    }
     catch (e) { toast(e.message); renderAI(); }
   };
   app.querySelectorAll('[data-preset]').forEach((b) => b.onclick = () => { settings.elPreset = b.dataset.preset; saveSettings(); renderAI(); });
