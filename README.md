@@ -15,6 +15,12 @@
 | `earcue/샘플대본.txt` | 업로드 테스트용 샘플 대본 |
 | `.claude/launch.json` | 로컬 미리보기 서버 설정 |
 
+## 배포 주소
+
+**https://orrket-2025.github.io/earcue/** (GitHub Pages)
+
+`main` 브랜치에 푸시하면 워크플로가 `earcue/` 폴더를 `gh-pages` 브랜치로 올려 자동 배포됩니다. 반영까지 1~2분 걸립니다.
+
 ## 로컬에서 실행
 
 ```bash
