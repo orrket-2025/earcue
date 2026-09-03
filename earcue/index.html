@@ -240,6 +240,18 @@ select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-
 .seg button svg{width:16px;height:16px;fill:currentColor}
 .seg button[aria-checked="true"]{color:var(--text);background:linear-gradient(180deg,var(--face-hi),var(--face-lo));box-shadow:inset 0 1px 0 var(--edge-light),0 3px 8px rgba(0,0,0,.35)}
 
+/* AI voice */
+.led.stale{background:radial-gradient(circle at 40% 35%,#FFE0A3,#F2B544 60%);box-shadow:0 0 8px rgba(242,181,68,.7)}
+.seg.presets{grid-template-columns:1fr 1fr;gap:3px}
+.seg.presets button{flex-direction:column;align-items:flex-start;height:auto;padding:10px 12px;text-align:left;gap:2px}
+.seg.presets button b{font-weight:500;font-size:14px}
+.seg.presets button small{font-size:11.5px;color:var(--text-dim);line-height:1.4}
+.seg.presets button[aria-checked="true"] small{color:var(--text-soft)}
+.ai-summary{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);letter-spacing:.04em}
+.ai-summary b{color:var(--text);font-weight:500;margin-right:3px}
+.panel .t{font-weight:500;font-size:15px}
+.panel small.muted{display:block;font-size:12.5px;margin-top:2px}
+
 /* sheet */
 .sheet-bg{position:fixed;inset:0;background:rgba(10,12,15,.55);backdrop-filter:blur(3px);opacity:0;transition:opacity .2s;z-index:20}
 .sheet-bg.open{opacity:1}
@@ -315,6 +327,7 @@ const ICON = {
   trash: '<svg viewBox="0 0 24 24"><path d="M6 7h12l-1 14H7zM9 3h6l1 2h4v2H4V5h4z"/></svg>',
   speaker: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zm11.5 3a3.5 3.5 0 0 0-2-3.2v6.4a3.5 3.5 0 0 0 2-3.2zm-2-7v2.1a5 5 0 0 1 0 9.8V19a7 7 0 0 0 0-14z"/></svg>',
   rec: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>',
+  spark: '<svg viewBox="0 0 24 24"><path d="M12 2l1.8 5.6L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.4zM5 15l.9 2.6L8.5 18l-2.6.9L5 21.5l-.9-2.6L1.5 18l2.6-.4zM19 14l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>',
   mic: '<svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11z"/></svg>',
 };
 
@@ -339,7 +352,7 @@ const DEFAULT_KEYMAP = {
   prev: ['PageUp', 'ArrowLeft', 'ArrowUp'],
   play: ['F5', '.', 'Enter', 'b'],
 };
-const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true };
+const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, elVoiceId: '', elVoiceName: '', elPreset: 'calm', elKeepRec: true };
 
 const store = {
   load(k, d) { try { const v = localStorage.getItem('earcue.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -402,8 +415,8 @@ async function loadRecs(scriptId) {
 const recUrl = (r) => r.url || (r.url = URL.createObjectURL(r.blob));
 const fmtSec = (ms) => (ms / 1000).toFixed(1) + 's';
 function syncRecCount(script) { script.recCount = script.sentences.filter((x) => recs.has(x.id)).length; saveScripts(); }
-async function saveRec(script, sentenceId, take) {
-  const r = { id: sentenceId, scriptId: script.id, blob: take.blob, duration: take.duration, mime: take.mime, createdAt: Date.now() };
+async function saveRec(script, sentenceId, take, extra = {}) {
+  const r = { id: sentenceId, scriptId: script.id, blob: take.blob, duration: take.duration, mime: take.mime, createdAt: Date.now(), kind: 'rec', ...extra };
   try { await idb.put(r); } catch { toast('녹음을 저장할 수 없습니다 (저장 공간 확인)'); return false; }
   const old = recs.get(sentenceId); if (old && old.url) URL.revokeObjectURL(old.url);
   recs.set(sentenceId, r); syncRecCount(script); return true;
@@ -468,6 +481,90 @@ const recorder = {
   },
   release() { cancelAnimationFrame(this.raf); if (this.active) { try { this.mr.stop(); } catch {} } this.mr = null; if (this.stream) this.stream.getTracks().forEach((t) => t.stop()); this.stream = null; if (this.ctx) { this.ctx.close().catch(() => {}); this.ctx = null; this.analyser = null; } },
 };
+
+/* ---------------- ElevenLabs: cloned voice + generated sentences ----------------
+   The API key is typed by the user into the app and kept in this browser only; every call goes straight to
+   api.elevenlabs.io from the device. Generated clips are stored beside the presenter's own recordings. */
+const PRESETS = {
+  calm:     { label: '차분한 강연',  desc: '안정적이고 또박또박, 조금 느리게',      v: { stability: 0.7,  similarity_boost: 0.8,  style: 0.15, speed: 0.95, use_speaker_boost: true } },
+  strong:   { label: '힘 있는 연설', desc: '억양이 크고 강조가 분명함',            v: { stability: 0.3,  similarity_boost: 0.75, style: 0.55, speed: 1.0,  use_speaker_boost: true } },
+  friendly: { label: '친근한 발표',  desc: '가볍고 부드럽게, 약간 빠르게',         v: { stability: 0.45, similarity_boost: 0.75, style: 0.35, speed: 1.05, use_speaker_boost: true } },
+  neutral:  { label: '내 녹음 그대로', desc: '녹음 샘플의 말투를 최대한 유지',      v: { stability: 0.5,  similarity_boost: 0.85, style: 0.0,  speed: 1.0,  use_speaker_boost: true } },
+};
+const textHash = (t) => { let h = 5381; const n = normalize(t); for (let i = 0; i < n.length; i++) h = ((h << 5) + h + n.charCodeAt(i)) | 0; return String(h); };
+const extOf = (mime) => /mp4|aac/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : /wav/.test(mime) ? 'wav' : /mpeg/.test(mime) ? 'mp3' : 'webm';
+const eleven = {
+  base: 'https://api.elevenlabs.io/v1', model: 'eleven_multilingual_v2',
+  key() { return store.load('eleven', {}).key || ''; },
+  setKey(k) { store.save('eleven', { key: String(k || '').trim() }); },
+  async req(path, opt = {}) {
+    const k = this.key(); if (!k) throw new Error('ElevenLabs API 키를 먼저 입력하세요');
+    let res;
+    try { res = await fetch(this.base + path, { ...opt, headers: { 'xi-api-key': k, ...(opt.headers || {}) } }); }
+    catch { throw new Error('ElevenLabs에 연결할 수 없습니다. 인터넷 연결을 확인하세요'); }
+    if (!res.ok) {
+      let msg = `오류 ${res.status}`;
+      try { const j = await res.json(); const d = j.detail; msg = (d && (d.message || (typeof d === 'string' ? d : d.status))) || msg; } catch {}
+      if (res.status === 401) msg = 'API 키가 올바르지 않습니다';
+      throw new Error(msg);
+    }
+    return res;
+  },
+  subscription() { return this.req('/user/subscription').then((r) => r.json()); },
+  voices() { return this.req('/voices').then((r) => r.json()).then((j) => j.voices || []); },
+  clone(name, blobs) {
+    const fd = new FormData();
+    fd.append('name', name); fd.append('remove_background_noise', 'true');
+    fd.append('description', 'EarCue 발표자 목소리'); fd.append('labels', JSON.stringify({ language: 'ko', use_case: 'presentation' }));
+    blobs.forEach((b, i) => fd.append('files', b, `sample-${i + 1}.${extOf(b.type)}`));
+    return this.req('/voices/add', { method: 'POST', body: fd }).then((r) => r.json());
+  },
+  async speak(voiceId, text, preset, ctx = {}) {
+    const body = { text, model_id: this.model, voice_settings: PRESETS[preset].v };
+    if (ctx.prev) body.previous_text = ctx.prev; if (ctx.next) body.next_text = ctx.next;
+    const res = await this.req(`/text-to-speech/${voiceId}?output_format=mp3_44100_128`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return res.blob();
+  },
+};
+function blobDuration(blob, fallbackMs) {
+  return new Promise((res) => {
+    const url = URL.createObjectURL(blob); const a = new Audio(); let done = false;
+    const finish = (ms) => { if (done) return; done = true; URL.revokeObjectURL(url); res(ms); };
+    a.onloadedmetadata = () => finish(isFinite(a.duration) && a.duration > 0 ? a.duration * 1000 : fallbackMs);
+    a.onerror = () => finish(fallbackMs); setTimeout(() => finish(fallbackMs), 4000);
+    a.src = url;
+  });
+}
+/* which sentences need (re)generation */
+function aiPlan(script) {
+  const plan = { fresh: [], stale: [], missing: [], kept: [], chars: 0 };
+  for (const x of script.sentences) {
+    const r = recs.get(x.id); const t = x.text.trim(); if (!t) continue;
+    if (r && r.kind === 'rec' && settings.elKeepRec) { plan.kept.push(x); continue; }
+    if (r && r.kind === 'ai' && r.textHash === textHash(t) && r.preset === settings.elPreset && r.voiceId === settings.elVoiceId) { plan.fresh.push(x); continue; }
+    (r && r.kind === 'ai' ? plan.stale : plan.missing).push(x); plan.chars += t.length;
+  }
+  return plan;
+}
+const aiJob = { running: false, done: 0, total: 0, note: '', cancel: false };
+async function generateAll(script, onTick) {
+  const plan = aiPlan(script); const todo = [...plan.stale, ...plan.missing];
+  if (!settings.elVoiceId) throw new Error('먼저 목소리를 선택하거나 만들어 주세요');
+  if (!todo.length) { toast('모든 문장이 최신 상태입니다'); return; }
+  aiJob.running = true; aiJob.done = 0; aiJob.total = todo.length; aiJob.cancel = false; aiJob.note = '';
+  try {
+    for (const x of todo) {
+      if (aiJob.cancel) break;
+      const i = script.sentences.indexOf(x);
+      const ctx = { prev: i > 0 ? script.sentences[i - 1].text : '', next: i < script.sentences.length - 1 ? script.sentences[i + 1].text : '' };
+      aiJob.note = `${i + 1}번 문장 생성 중`; onTick && onTick();
+      const blob = await eleven.speak(settings.elVoiceId, x.text.trim(), settings.elPreset, ctx);
+      const duration = await blobDuration(blob, x.text.length / 5.5 * 1000);
+      await saveRec(script, x.id, { blob, duration, mime: blob.type || 'audio/mpeg' }, { kind: 'ai', textHash: textHash(x.text), preset: settings.elPreset, voiceId: settings.elVoiceId });
+      aiJob.done++; onTick && onTick();
+    }
+  } finally { aiJob.running = false; aiJob.note = ''; onTick && onTick(); }
+}
 
 /* ---------------- TTS engine ---------------- */
 const synth = window.speechSynthesis;
@@ -540,7 +637,7 @@ const tts = {
 /* Which voice reads a sentence: the presenter's own recording when one exists and is chosen, else TTS. */
 function speakSentence(sentence, handlers) {
   const r = settings.voiceSource === 'mine' ? recs.get(sentence.id) : null;
-  state.usingRec = !!r; state.recMissing = settings.voiceSource === 'mine' && !r;
+  state.usingRec = r ? (r.kind || 'rec') : ''; state.recMissing = settings.voiceSource === 'mine' && !r;
   if (r) recPlayer.play(r, handlers); else tts.speak(sentence.text, handlers);
 }
 const isSpeaking = () => tts.speaking || recPlayer.playing;
@@ -603,7 +700,7 @@ async function route() {
   const [view, id] = h.split('/');
   stopEverything();
   const seq = ++routeSeq;
-  if (['edit', 'stage', 'record'].includes(view) && scripts.find((s) => s.id === id)) {
+  if (['edit', 'stage', 'record', 'ai'].includes(view) && scripts.find((s) => s.id === id)) {
     state.view = view; state.scriptId = id;
     if (view !== 'edit') { state.idx = clamp(state.idx, 0, current().sentences.length - 1); state.progress = 0; state.startedAt = 0; }
     await loadRecs(id);
@@ -627,6 +724,7 @@ function render() {
   if (state.view === 'home') renderHome();
   else if (state.view === 'edit') renderEditor();
   else if (state.view === 'record') renderRecord();
+  else if (state.view === 'ai') renderAI();
   else renderStage();
 }
 
@@ -719,6 +817,11 @@ function renderEditor() {
         <span class="grow"><span class="t">내 목소리 녹음</span><small id="recSummary">${recs.size ? `${recs.size}/${s.sentences.length}문장 녹음됨 · 발표 때 내 목소리로 들려줍니다` : '문장을 하나씩 직접 읽어 녹음하면 발표 때 내 목소리로 들려줍니다'}</small></span>
         ${ICON.mic}
       </button>
+      <button class="rec-entry" id="toAI">
+        <i class="led ${aiCount(s) ? 'lamp' : ''}"></i>
+        <span class="grow"><span class="t">AI 목소리로 만들기</span><small>${aiEntrySummary(s)}</small></span>
+        ${ICON.spark}
+      </button>
       <div class="sent-list" id="list"></div>
       <p class="hint">문장을 누르면 도구가 나타납니다. 커서를 둔 자리에서 나누거나, 다음 문장과 합칠 수 있습니다. 스피커 버튼으로 미리 들어 보세요. 문장을 나누거나 합치면 그 문장의 녹음은 지워지므로 다시 녹음해 주세요.</p>
       <div class="row between">
@@ -728,6 +831,7 @@ function renderEditor() {
     </main>`;
   $('#back').onclick = () => go('/');
   $('#toStage').onclick = $('#toStage2').onclick = () => { state.idx = 0; go('/stage/' + s.id); };
+  $('#toAI').onclick = () => go('/ai/' + s.id);
   $('#toRecord').onclick = () => { state.idx = Math.max(0, s.sentences.findIndex((x) => !recs.has(x.id))); if (state.idx < 0) state.idx = 0; go('/record/' + s.id); };
   $('#title').oninput = (e) => { s.title = e.target.value; touch(); };
   $('#add').onclick = () => { s.sentences.push({ id: uid(), text: '' }); touch(); renderList(); focusSentence(s.sentences.length - 1); };
@@ -740,7 +844,7 @@ function renderEditor() {
     const list = $('#list');
     list.innerHTML = s.sentences.map((x, i) => `
       <div class="sent" data-i="${i}">
-        <div class="num">${String(i + 1).padStart(2, '0')}${recs.has(x.id) ? '<i class="led next tiny" title="내 목소리 녹음 있음"></i>' : ''}</div>
+        <div class="num">${String(i + 1).padStart(2, '0')}${ledFor(x)}</div>
         <textarea rows="1" placeholder="문장을 입력">${esc(x.text)}</textarea>
         <div class="tools">
           <button class="btn small" data-act="say">${ICON.speaker}듣기</button>
@@ -781,6 +885,107 @@ function renderEditor() {
   });
   // mouse users: clicking a card focuses it
   list.addEventListener('mousedown', (e) => { const card = e.target.closest('.sent'); if (card && !e.target.closest('textarea,button')) { card.querySelector('textarea').focus(); } });
+}
+
+function ledFor(x) {
+  const r = recs.get(x.id); if (!r) return '';
+  if (r.kind === 'ai') return r.textHash === textHash(x.text) ? '<i class="led lamp tiny" title="AI 내 목소리 생성됨"></i>' : '<i class="led stale tiny" title="문장이 바뀌어 다시 생성이 필요합니다"></i>';
+  return '<i class="led next tiny" title="내 목소리 녹음 있음"></i>';
+}
+const aiCount = (s) => s.sentences.filter((x) => { const r = recs.get(x.id); return r && r.kind === 'ai'; }).length;
+function aiEntrySummary(s) {
+  if (!eleven.key()) return 'ElevenLabs 계정을 연결하면 녹음 없이도 내 목소리로 전체 대본을 만들 수 있습니다';
+  const n = aiCount(s); const plan = aiPlan(s);
+  if (!n) return settings.elVoiceName ? `${settings.elVoiceName} · 아직 생성한 문장이 없습니다` : '목소리를 선택하거나 만들어 주세요';
+  return `${settings.elVoiceName || '목소리'} · ${n}/${s.sentences.length}문장 생성됨${plan.stale.length ? ` · ${plan.stale.length}문장 다시 생성 필요` : ''}`;
+}
+
+/* ---- AI voice view ---- */
+function renderAI() {
+  const s = current(); const hasKey = !!eleven.key(); const plan = aiPlan(s);
+  const recSecs = s.sentences.reduce((a, x) => { const r = recs.get(x.id); return a + (r && r.kind === 'rec' ? r.duration : 0); }, 0) / 1000;
+  const presetSeg = Object.entries(PRESETS).map(([k, p]) => `<button role="radio" aria-checked="${settings.elPreset === k}" data-preset="${k}"><b>${p.label}</b><small>${p.desc}</small></button>`).join('');
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: '' })}
+    <main class="view">
+      <section class="stack">
+        <h2>ElevenLabs 연결</h2>
+        <div class="row">
+          <input class="field grow" id="elKey" type="password" autocomplete="off" placeholder="${hasKey ? '저장된 키 사용 중 · 바꾸려면 새 키 입력' : 'API 키 붙여넣기'}" aria-label="ElevenLabs API 키">
+          <button class="btn" id="elSave">저장</button>
+        </div>
+        <div class="status" id="elStatus"><span class="chip"><i class="led ${hasKey ? 'lamp' : ''}"></i>${hasKey ? '연결 확인 중…' : '키가 없습니다'}</span></div>
+        <p class="hint">키는 이 기기의 브라우저에만 저장되고 ElevenLabs로만 전송됩니다. 발급: elevenlabs.io → 프로필 → API Keys. 권한은 Text to Speech, Voices, User 읽기가 필요합니다.</p>
+      </section>
+      <section class="stack" ${hasKey ? '' : 'hidden'}>
+        <div class="row between"><h2>목소리</h2><button class="btn small ghost" id="elReload">목록 새로고침</button></div>
+        <div class="select-wrap"><select class="field" id="elVoice" aria-label="목소리 선택"><option value="">${settings.elVoiceName ? esc(settings.elVoiceName) : '불러오는 중…'}</option></select></div>
+        <div class="panel stack">
+          <div><div class="t">녹음한 문장으로 내 목소리 만들기</div><small class="muted">지금까지 직접 녹음한 ${recSecs.toFixed(0)}초를 학습 샘플로 씁니다 (60초 이상 권장, 최소 30초)</small></div>
+          <div class="row"><input class="field grow" id="cloneName" value="내 목소리" aria-label="목소리 이름"><button class="btn lamp" id="cloneBtn" ${recSecs >= 30 ? '' : 'disabled'}>${ICON.mic}만들기</button></div>
+          <p class="hint">${recSecs >= 30 ? '조용한 곳에서 녹음한 문장일수록 결과가 좋습니다. 만들면 목소리 목록에 추가되고 자동으로 선택됩니다.' : '먼저 "내 목소리 녹음"에서 문장을 더 녹음해 주세요. 30초가 넘으면 이 버튼이 켜집니다.'}</p>
+        </div>
+      </section>
+      <section class="stack" ${hasKey ? '' : 'hidden'}>
+        <h2>말투</h2>
+        <div class="seg presets" role="radiogroup">${presetSeg}</div>
+        <p class="hint">특정 인물의 목소리를 흉내 내지는 않습니다. 말의 속도·안정감·강조 정도를 바꿔 내 목소리의 말투를 조정합니다.</p>
+      </section>
+      <section class="stack" ${hasKey ? '' : 'hidden'}>
+        <h2>문장 음성 만들기</h2>
+        <div class="panel stack">
+          <div class="ai-summary mono">
+            <span><b>${plan.fresh.length}</b> 최신</span><span><b>${plan.stale.length}</b> 다시 생성</span><span><b>${plan.missing.length}</b> 없음</span><span><b>${plan.kept.length}</b> 직접 녹음 유지</span>
+          </div>
+          <button class="switch" role="switch" id="swKeep" aria-checked="${settings.elKeepRec}"><span class="label"><span>직접 녹음한 문장은 유지</span><small>끄면 그 문장도 AI 목소리로 덮어씁니다</small></span><span class="rocker"></span></button>
+          <div class="track" aria-hidden="true"><div class="fill" id="aiFill" style="width:${aiJob.total ? aiJob.done / aiJob.total * 100 : 0}%"></div></div>
+          <div class="row between"><span class="hint" id="aiNote">${aiJob.running ? aiJob.note : `생성할 글자 수 ${plan.chars.toLocaleString()} · 약 ${plan.chars.toLocaleString()} 크레딧`}</span>
+            <button class="btn small" id="aiPreview" ${settings.elVoiceId ? '' : 'disabled'}>${ICON.play}첫 문장 미리 듣기</button></div>
+          <button class="btn lamp" id="aiGen" ${settings.elVoiceId && !aiJob.running && (plan.stale.length + plan.missing.length) ? '' : 'disabled'}>${ICON.spark}${aiJob.running ? `생성 중 ${aiJob.done}/${aiJob.total}` : `${plan.stale.length + plan.missing.length}문장 생성`}</button>
+          ${aiJob.running ? '<button class="btn small ghost" id="aiCancel">중단</button>' : ''}
+        </div>
+        <p class="hint">생성한 음성은 이 기기에 저장되어 발표 때 인터넷 없이 재생됩니다. 문장을 고치면 그 문장만 다시 생성하면 됩니다.</p>
+      </section>
+    </main>`;
+  $('#back').onclick = () => go('/edit/' + s.id);
+  $('#elSave').onclick = () => { const v = $('#elKey').value.trim(); if (!v) { toast('키를 입력해 주세요'); return; } eleven.setKey(v); $('#elKey').value = ''; toast('저장했습니다'); renderAI(); };
+  $('#elKey').onkeydown = (e) => { if (e.key === 'Enter') $('#elSave').click(); };
+  if (!hasKey) return;
+  const setStatus = (html) => { const el = $('#elStatus'); if (el) el.innerHTML = html; };
+  eleven.subscription().then((sub) => {
+    const used = sub.character_count || 0, lim = sub.character_limit || 0;
+    setStatus(`<span class="chip on"><i class="led next"></i>연결됨 · ${esc(sub.tier || '')}</span><span class="chip">남은 크레딧 ${(lim - used).toLocaleString()} / ${lim.toLocaleString()}</span>`);
+  }).catch((e) => setStatus(`<span class="chip warn"><i class="led now"></i>${esc(e.message)}</span>`));
+  const fillVoices = () => eleven.voices().then((list) => {
+    const sel = $('#elVoice'); if (!sel) return;
+    const mine = list.filter((v) => v.category !== 'premade'), pre = list.filter((v) => v.category === 'premade');
+    const opt = (v) => `<option value="${esc(v.voice_id)}" data-name="${esc(v.name)}" ${v.voice_id === settings.elVoiceId ? 'selected' : ''}>${esc(v.name)}${v.category && v.category !== 'premade' ? ` (${esc(v.category)})` : ''}</option>`;
+    sel.innerHTML = `<option value="">목소리 선택</option>${mine.length ? '<optgroup label="내 목소리">' + mine.map(opt).join('') + '</optgroup>' : ''}<optgroup label="기본 제공">${pre.map(opt).join('')}</optgroup>`;
+  }).catch((e) => { const sel = $('#elVoice'); if (sel) sel.innerHTML = `<option value="">목록을 불러올 수 없습니다</option>`; toast(e.message); });
+  fillVoices();
+  $('#elReload').onclick = fillVoices;
+  $('#elVoice').onchange = (e) => { const o = e.target.selectedOptions[0]; settings.elVoiceId = e.target.value; settings.elVoiceName = o ? (o.dataset.name || '') : ''; saveSettings(); renderAI(); };
+  $('#cloneBtn').onclick = async () => {
+    const name = $('#cloneName').value.trim() || '내 목소리';
+    const blobs = s.sentences.map((x) => recs.get(x.id)).filter((r) => r && r.kind === 'rec').map((r) => r.blob);
+    const btn = $('#cloneBtn'); btn.disabled = true; btn.textContent = '만드는 중…';
+    try { const out = await eleven.clone(name, blobs); settings.elVoiceId = out.voice_id; settings.elVoiceName = name; saveSettings(); toast(`"${name}" 목소리를 만들었습니다`); renderAI(); }
+    catch (e) { toast(e.message); renderAI(); }
+  };
+  app.querySelectorAll('[data-preset]').forEach((b) => b.onclick = () => { settings.elPreset = b.dataset.preset; saveSettings(); renderAI(); });
+  $('#swKeep').onclick = () => { settings.elKeepRec = !settings.elKeepRec; saveSettings(); renderAI(); };
+  $('#aiPreview').onclick = async () => {
+    const x = s.sentences.find((y) => y.text.trim()); if (!x) return;
+    const b = $('#aiPreview'); b.disabled = true;
+    try { const blob = await eleven.speak(settings.elVoiceId, x.text.trim(), settings.elPreset, { next: (s.sentences[1] || {}).text }); const dur = await blobDuration(blob, 3000); recPlayer.play({ blob, duration: dur }, { onEnd: () => { b.disabled = false; } }); }
+    catch (e) { toast(e.message); b.disabled = false; }
+  };
+  $('#aiGen').onclick = async () => {
+    const tick = () => { if (state.view !== 'ai') return; const f = $('#aiFill'), n = $('#aiNote'), g = $('#aiGen'); if (f) f.style.width = (aiJob.total ? aiJob.done / aiJob.total * 100 : 0) + '%'; if (n) n.textContent = aiJob.running ? `${aiJob.note} · ${aiJob.done}/${aiJob.total}` : ''; if (g) g.innerHTML = ICON.spark + (aiJob.running ? `생성 중 ${aiJob.done}/${aiJob.total}` : '완료'); };
+    try { aiJob.running = true; aiJob.done = 0; aiJob.total = plan.stale.length + plan.missing.length; renderAI(); const c = $('#aiCancel'); if (c) c.onclick = () => { aiJob.cancel = true; }; await generateAll(s, tick); toast(aiJob.cancel ? `중단했습니다 (${aiJob.done}문장 저장됨)` : `${aiJob.done}문장을 내 목소리로 만들었습니다`); }
+    catch (e) { aiJob.running = false; toast(e.message); }
+    renderAI();
+  };
 }
 
 /* ---- stage ---- */
@@ -870,7 +1075,7 @@ function renderStageStatus() {
   const el = $('#status'); if (!el) return;
   const chips = [];
   const sp = isSpeaking();
-  chips.push(`<span class="chip ${sp ? 'on' : ''}"><i class="led ${sp ? 'lamp' : ''}"></i>${sp ? (state.usingRec ? '내 목소리' : '읽는 중') : '대기'}</span>`);
+  chips.push(`<span class="chip ${sp ? 'on' : ''}"><i class="led ${sp ? 'lamp' : ''}"></i>${sp ? (state.usingRec === 'ai' ? 'AI 내 목소리' : state.usingRec ? '내 목소리' : '읽는 중') : '대기'}</span>`);
   if (state.recMissing) chips.push(`<span class="chip"><i class="led"></i>녹음 없음 · 기기 음성</span>`);
   if (settings.auto) chips.push(`<span class="chip on" id="autoChip"><i class="led lamp ${state.autoDue ? 'blink' : ''}"></i>자동 <span id="autoCount">${state.autoDue ? ((state.autoDue - performance.now()) / 1000).toFixed(1) + 's' : settings.lead + 's'}</span></span>`);
   if (settings.listen) chips.push(`<span class="chip on"><i class="led ${listener.on && !listener.suspended ? 'next' : ''}"></i>말 인식 ${!listener.on ? '꺼짐' : listener.suspended ? '대기' : '듣는 중'}</span>`);
