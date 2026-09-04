@@ -327,6 +327,7 @@ body.swipe-lock .ly{padding:6px 0}
 .keymap-row .empty-keys{font-size:12px;color:var(--text-dim)}
 .sig-mon{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font-family:var(--mono);font-size:11.5px}
 .sig-mon .sig{display:flex;align-items:center;gap:10px}
+.diag-list{margin:0;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font:12px/1.7 var(--mono);color:var(--text);white-space:pre-wrap;word-break:break-all;min-height:50vh;max-height:66vh;overflow:auto}
 .learn-note{font-family:var(--mono);font-size:12px;color:var(--lamp);animation:blink 1s steps(2,start) infinite}
 
 .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translate(-50%,20px);padding:10px 16px;border-radius:12px;background:linear-gradient(180deg,#F6F7F9,#CFD3D9);color:#20242A;font-size:14px;font-weight:500;box-shadow:var(--raise),0 0 22px var(--lamp-glow);opacity:0;pointer-events:none;transition:.22s;z-index:30;max-width:calc(100% - 36px);text-align:center}
@@ -356,7 +357,7 @@ body.swipe-lock .ly{padding:6px 0}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -788,6 +789,7 @@ async function route() {
   const [view, id] = h.split('/');
   stopEverything();
   const seq = ++routeSeq;
+  if (view === 'diag') { state.view = 'diag'; render(); return; }
   if (['edit', 'stage', 'record', 'ai'].includes(view) && scripts.find((s) => s.id === id)) {
     state.view = view; state.scriptId = id;
     if (view !== 'edit') { state.idx = clamp(state.idx, 0, current().sentences.length - 1); state.progress = 0; state.startedAt = 0; }
@@ -814,6 +816,7 @@ function render() {
   else if (state.view === 'edit') renderEditor();
   else if (state.view === 'record') renderRecord();
   else if (state.view === 'ai') renderAI();
+  else if (state.view === 'diag') renderDiag();
   else renderStage();
 }
 
@@ -1080,6 +1083,48 @@ function renderAI() {
     renderAI();
   };
 }
+
+/* ---- remote diagnostics: every raw input, in order, so an unknown remote can be understood ---- */
+const diag = { rows: [], t0: 0, moves: 0 };
+function diagLog(text) {
+  if (state.view !== 'diag') return;
+  if (!diag.t0) diag.t0 = performance.now();
+  diag.rows.unshift(`${((performance.now() - diag.t0) / 1000).toFixed(2).padStart(6)}s  ${text}`);
+  diag.rows.length = Math.min(diag.rows.length, 80);
+  const el = $('#diagList'); if (el) el.textContent = diag.rows.join('\n');
+}
+function renderDiag() {
+  document.body.classList.add('swipe-lock');
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="뒤로">${ICON.back}</button>`, title: brand(), right: '' })}
+    <main class="view" style="touch-action:none">
+      <h2>리모컨 진단</h2>
+      <p class="hint">리모컨 버튼을 하나씩 눌러 보세요. 들어오는 모든 신호가 시간순(최신이 위)으로 기록됩니다. 화면을 캡처해서 보내 주시면 됩니다. 이 화면에서는 손가락 터치도 그대로 기록됩니다.</p>
+      <div class="row"><button class="btn small" id="diagClear">지우기</button><button class="btn small" id="diagCopy">복사</button><span class="hint grow" id="diagNote"></span></div>
+      <pre class="diag-list" id="diagList">${esc(diag.rows.join('\n')) || '아직 신호가 없습니다'}</pre>
+    </main>`;
+  $('#back').onclick = () => history.length > 1 ? history.back() : go('/');
+  $('#diagClear').onclick = () => { diag.rows = []; diag.t0 = 0; $('#diagList').textContent = '아직 신호가 없습니다'; };
+  $('#diagCopy').onclick = async () => { try { await navigator.clipboard.writeText(diag.rows.slice().reverse().join('\n')); toast('복사했습니다'); } catch { toast('복사할 수 없습니다. 화면을 캡처해 주세요'); } };
+  media.start();
+}
+(function attachDiag() {
+  const pos = (e) => { const t = (e.changedTouches && e.changedTouches[0]) || e; return `${Math.round(t.clientX)},${Math.round(t.clientY)}`; };
+  window.addEventListener('keydown', (e) => diagLog(`keydown  key=${e.key} code=${e.code} keyCode=${e.keyCode}${e.repeat ? ' repeat' : ''}`), true);
+  window.addEventListener('keyup', (e) => diagLog(`keyup    key=${e.key} code=${e.code} keyCode=${e.keyCode}`), true);
+  window.addEventListener('pointerdown', (e) => diagLog(`pointer↓ ${e.pointerType} button=${e.button} at ${pos(e)}`), true);
+  window.addEventListener('pointerup', (e) => diagLog(`pointer↑ ${e.pointerType} at ${pos(e)}`), true);
+  window.addEventListener('pointercancel', (e) => diagLog(`pointer✕ ${e.pointerType} at ${pos(e)}`), true);
+  let ts = null;
+  window.addEventListener('touchstart', (e) => { ts = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, t: performance.now(), n: 0 }; diagLog(`touch↓   at ${pos(e)} fingers=${e.touches.length}`); }, { capture: true, passive: true });
+  window.addEventListener('touchmove', (e) => { if (ts) ts.n++; }, { capture: true, passive: true });
+  const endT = (e, kind) => { if (!ts) { diagLog(`${kind} (시작 없음)`); return; } const t = e.changedTouches[0]; diagLog(`${kind} at ${pos(e)}  이동 dx=${Math.round(t.clientX - ts.x)} dy=${Math.round(t.clientY - ts.y)}  ${Math.round(performance.now() - ts.t)}ms  move=${ts.n}회`); ts = null; };
+  window.addEventListener('touchend', (e) => endT(e, 'touch↑  '), { capture: true, passive: true });
+  window.addEventListener('touchcancel', (e) => endT(e, 'touch✕  '), { capture: true, passive: true });
+  window.addEventListener('wheel', (e) => diagLog(`wheel    dy=${Math.round(e.deltaY)} dx=${Math.round(e.deltaX)}`), { capture: true, passive: true });
+  window.addEventListener('scroll', (e) => diagLog(`scroll   ${e.target === document ? 'page' : (e.target.id || e.target.className || 'el')}`), true);
+  window.addEventListener('contextmenu', (e) => diagLog('contextmenu (길게 누름)'), true);
+})();
 
 /* ---- stage ---- */
 function applyFontSize() { document.documentElement.style.setProperty('--script-size', clamp(settings.fontSize || 18, 12, 40) + 'px'); }
@@ -1403,7 +1448,7 @@ function renderSheet() {
     <h2>리모컨 버튼</h2>
     ${keyRow('next', '다음')}${keyRow('prev', '이전')}${keyRow('play', '읽기')}
     <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기·탭(쇼츠 모드 링 리모컨), 게임패드 신호를 모두 받습니다. 링 리모컨은 기본값으로 위로 쓸기 = 다음, 아래로 쓸기 = 이전, 가운데 탭 = 읽기입니다. 길게 누르기(볼륨·화면 잠금)는 브라우저가 받지 못합니다. 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
-    <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><button class="btn ghost small" id="resetKeys">기본값으로</button></div>
+    <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><span class="row"><button class="btn small" id="openDiag">진단 화면</button><button class="btn ghost small" id="resetKeys">기본값으로</button></span></div>
     <div class="sig-mon" id="sigMon">${signalMonitor()}</div>
     <div class="row" style="margin-top:18px"><button class="btn lamp grow" id="closeSheet">닫기</button></div>`;
   $('#voice').onchange = (e) => { settings.voiceURI = e.target.value; saveSettings(); };
@@ -1415,6 +1460,7 @@ function renderSheet() {
   $('#leadUp').onclick = () => { settings.lead = clamp(settings.lead + 0.5, 0, 10); saveSettings(); $('#leadVal').textContent = settings.lead.toFixed(1) + 's'; $('#leadLbl').textContent = settings.lead; };
   sh.querySelectorAll('[data-learn]').forEach((b) => b.onclick = () => { state.learning = b.dataset.learn; renderSheet(); });
   sh.querySelectorAll('[data-unkey]').forEach((b) => b.onclick = () => { const [id, k] = b.dataset.unkey.split(/:(.*)/); settings.keymap[id] = settings.keymap[id].filter((x) => x !== k); saveSettings(); renderSheet(); });
+  $('#openDiag').onclick = () => { closeSheet(true); go('/diag'); };
   $('#resetKeys').onclick = () => { settings.keymap = JSON.parse(JSON.stringify(DEFAULT_KEYMAP)); saveSettings(); renderSheet(); };
   $('#closeSheet').onclick = () => { closeSheet(); renderStage(); };
 }
@@ -1511,7 +1557,7 @@ const media = {
     const a = new Audio(URL.createObjectURL(wavBlob(new Float32Array(4000), 8000))); a.loop = true; a.volume = 0.05; this.el = a;
     const acts = { nexttrack: 'Media:next', previoustrack: 'Media:prev', seekforward: 'Media:next', seekbackward: 'Media:prev', play: 'Media:play', pause: 'Media:play', stop: 'Media:play' };
     for (const [action, k] of Object.entries(acts)) {
-      try { navigator.mediaSession.setActionHandler(action, () => { logSignal('media', k, { code: action }); handleSignal(k, { preventDefault() {}, target: document.body }); try { navigator.mediaSession.playbackState = 'playing'; } catch {} if (this.el && this.el.paused) this.el.play().catch(() => {}); }); } catch {}
+      try { navigator.mediaSession.setActionHandler(action, () => { diagLog(`media    ${action}`); logSignal('media', k, { code: action }); handleSignal(k, { preventDefault() {}, target: document.body }); try { navigator.mediaSession.playbackState = 'playing'; } catch {} if (this.el && this.el.paused) this.el.play().catch(() => {}); }); } catch {}
     }
     a.play().then(() => { this.ready = true; try { navigator.mediaSession.metadata = new MediaMetadata({ title: '리모컨 대기 중', artist: 'EarCue 이어큐' }); navigator.mediaSession.playbackState = 'playing'; } catch {} renderStageStatus(); }).catch(() => {});
   },
@@ -1566,7 +1612,7 @@ const padState = {};
 function pollGamepads() {
   if (state.view === 'stage' || state.view === 'record') {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    for (const g of pads) { if (!g) continue; g.buttons.forEach((b, i) => { const id = g.index + ':' + i; if (b.pressed && !padState[id]) { const k = 'Pad' + i; logSignal('gamepad', k, { code: g.id.slice(0, 24) }); if (isMapped(k)) handleSignal(k, { preventDefault() {}, target: document.body }); } padState[id] = b.pressed; }); }
+    for (const g of pads) { if (!g) continue; g.buttons.forEach((b, i) => { const id = g.index + ':' + i; if (b.pressed && !padState[id]) { const k = 'Pad' + i; diagLog(`gamepad  button ${i} (${g.id.slice(0, 24)})`); logSignal('gamepad', k, { code: g.id.slice(0, 24) }); if (isMapped(k)) handleSignal(k, { preventDefault() {}, target: document.body }); } padState[id] = b.pressed; }); }
   }
   setTimeout(pollGamepads, 80);
 }

@@ -1,4 +1,4 @@
-const CACHE = 'earcue-v22';
+const CACHE = 'earcue-v23';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './icon-maskable.svg'];
 
 self.addEventListener('install', (e) => {
