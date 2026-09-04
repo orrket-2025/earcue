@@ -16,6 +16,8 @@ concurrency:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,9 +32,9 @@ jobs:
           echo "VERSION_CODE=${{ github.run_number }}" >> $GITHUB_ENV
           echo "VERSION_NAME=1.0.${{ github.run_number }}" >> $GITHUB_ENV
       - name: Restore the upload keystore (when the secrets are set)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.KEYSTORE_B64 != '' }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/upload-keystore.p12
+          echo "$KEYSTORE_B64" | base64 -d > android/upload-keystore.p12
           echo "ANDROID_KEYSTORE_PATH=$GITHUB_WORKSPACE/android/upload-keystore.p12" >> $GITHUB_ENV
           echo "ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "ANDROID_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
