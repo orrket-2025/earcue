@@ -364,7 +364,7 @@ body.swipe-lock .ly{padding:6px 0}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'v25';
+const APP_VERSION = 'v26';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -785,7 +785,7 @@ const listener = {
 };
 
 /* ---------------- app state / router ---------------- */
-const state = { view: 'home', scriptId: null, idx: 0, progress: 0, startedAt: 0, autoTimer: 0, autoDue: 0, lastKey: '', installPrompt: null, learning: null, ttsNote: '', usingRec: false, recMissing: false, speakT0: 0, recording: false };
+const state = { view: 'home', scriptId: null, idx: 0, progress: 0, startedAt: 0, autoTimer: 0, autoDue: 0, lastKey: '', installPrompt: null, learning: null, ttsNote: '', lastSignal: '', usingRec: false, recMissing: false, speakT0: 0, recording: false };
 let sheetOpen = false;
 let wakeLock = null;
 
@@ -1284,6 +1284,7 @@ function renderStageStatus() {
   if (settings.auto) chips.push(`<span class="chip on" id="autoChip"><i class="led lamp ${state.autoDue ? 'blink' : ''}"></i>자동 <span id="autoCount">${state.autoDue ? ((state.autoDue - performance.now()) / 1000).toFixed(1) + 's' : settings.lead + 's'}</span></span>`);
   if (settings.listen) chips.push(`<span class="chip on"><i class="led ${listener.on && !listener.suspended ? 'next' : ''}"></i>말 인식 ${!listener.on ? '꺼짐' : listener.suspended ? '대기' : '듣는 중'}</span>`);
   if (media.ready) chips.push(`<span class="chip"><i class="led lamp"></i>미디어 키 대기</span>`);
+  if (state.lastSignal) chips.push(`<span class="chip on"><i class="led next"></i>${esc(state.lastSignal)}</span>`);
   if (state.ttsNote) chips.push(`<span class="chip warn">${esc(state.ttsNote)}</span>`);
   el.innerHTML = chips.join('');
   const led = $('#ledNow'); if (led) led.classList.toggle('blink', sp);
@@ -1563,6 +1564,7 @@ function handleSignal(key, e) {
   const km = settings.keymap;
   const action = km.next.includes(key) ? 'next' : km.prev.includes(key) ? 'prev' : km.play.includes(key) ? 'play' : null;
   state.lastKey = key; flashKey(key, !!action);
+  state.lastSignal = `${keyName(key)} → ${action ? ACTION_LABEL[action] : '연결 안 됨'}`; renderStageStatus();
   if (!action) return;
   e.preventDefault(); if (e.repeat) return;
   if (state.view === 'record') { flashButton({ next: 'rNext', prev: 'rPrev', play: 'rToggle' }[action]); if (action === 'play') toggleRecording(); else moveRecord(action === 'next' ? 1 : -1); return; }
@@ -1629,7 +1631,7 @@ const media = {
 let swipe = null;
 window.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY, t: performance.now(), target: e.target }; }, { capture: true, passive: true });
 let lastTapAt = 0, lastGestureInfo = '';
-const gestureAllowed = (start) => !!state.learning || (!start.target.closest('.knob, .sheet, .sheet-bg') && !sheetOpen); // a ring injects at the screen centre, wherever that lands
+const gestureAllowed = (start) => !!state.learning || (!start.target.closest('.knob .cap, .sheet, .sheet-bg') && !sheetOpen); // a ring injects at the screen centre, wherever that lands
 function judgeSwipe(dx, dy, e, min = 35) {
   let k = '';
   if (Math.abs(dy) >= min && Math.abs(dx) <= Math.abs(dy) * 0.8) k = dy < 0 ? 'Swipe↑' : 'Swipe↓';
@@ -1637,6 +1639,7 @@ function judgeSwipe(dx, dy, e, min = 35) {
   if (!k || !swipe || swipe.done) return false;
   swipe.done = true; lastGestureInfo = `y ${Math.round(swipe.y)}→${Math.round(swipe.y + dy)}, x ${Math.round(swipe.x)}→${Math.round(swipe.x + dx)}`; logSignal('swipe', k, { code: lastGestureInfo });
   if (isMapped(k) && gestureAllowed(swipe)) handleSignal(k, { preventDefault() {}, target: swipe.target });
+  else { state.lastSignal = `${keyName(k)} → ${!isMapped(k) ? '연결 안 됨' : '무시됨 (' + (sheetOpen ? '설정 열림' : '노브 위') + ')'}`; renderStageStatus(); }
   return true;
 }
 // judged while the finger is still moving, so a remote's gesture reacts at once instead of on release
