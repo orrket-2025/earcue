@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2E3238">
+<meta name="theme-color" content="#161617">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,346 +14,262 @@
 <title>EarCue Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  color-scheme: dark;
-  --bg-hi:#3D424A; --bg-lo:#2A2E34;
-  --face:#3A3F46; --face-hi:#454A52; --face-lo:#30343A;
-  --well:#24272C; --well-deep:#1C1F23;
-  --edge-light:rgba(255,255,255,.10); --edge-dark:rgba(0,0,0,.55);
-  --text:#D9DCE1; --text-soft:#9DA2AA; --text-dim:#6F757E;
-  --lamp:#F1F3F6; --lamp-glow:rgba(241,243,246,.35);
-  --led-now:#FF5A4E; --led-next:#5FD394; --led-off:#4C5158;
-  --danger:#E0554B;
-  --sans:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  --raise: inset 0 1px 0 var(--edge-light), inset 0 -1px 0 rgba(0,0,0,.35), 0 8px 18px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.5);
-  --sink: inset 0 2px 5px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.05), 0 1px 0 rgba(255,255,255,.06);
-  --r:14px;
+  color-scheme:dark;
+  --bg:#161617; --block:#222224; --block-2:#2A2A2D; --block-3:#333336;
+  --line:rgba(255,255,255,.06); --text:#F4F4F5; --muted:#8B8B92; --dim:#5A5A62;
+  --lime:#CDFF6A; --lime-ink:#152000; --lime-soft:rgba(205,255,106,.13); --lime-line:rgba(205,255,106,.35);
+  --danger:#FF6B6B; --neon:var(--lime);
+  --sans:"Inter","Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"Inter",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:22px; --r2:16px; --gap:10px;
+  --led-now:#FF6B6B; --led-next:var(--lime); --led-off:#4A4A50; --lamp:#F4F4F5; --lamp-glow:rgba(205,255,106,.3);
+  --text-soft:var(--muted); --text-dim:var(--dim); --well-deep:#1B1B1D; --well:#1F1F21; --edge-light:transparent; --edge-dark:transparent;
 }
 *{box-sizing:border-box}
 html,body{height:100%;overscroll-behavior:none}
-body{
-  margin:0; font-family:var(--sans); color:var(--text); font-size:16px; line-height:1.5;
-  background:
-    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.07), transparent 60%),
-    linear-gradient(180deg,var(--bg-hi) 0%,var(--bg-lo) 100%) fixed;
-  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
-  overscroll-behavior:none;
-}
+body{margin:0;font-family:var(--sans);color:var(--text);font-size:15px;line-height:1.5;background:var(--bg);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;font-variant-numeric:tabular-nums}
 button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0}
-:focus-visible{outline:2px solid var(--lamp);outline-offset:3px;border-radius:6px}
+:focus-visible{outline:2px solid var(--lime);outline-offset:2px;border-radius:8px}
 [hidden]{display:none!important}
-::selection{background:rgba(241,243,246,.25)}
+::selection{background:var(--lime-soft)}
+a{color:var(--lime)}
 
-/* ---------- shell ---------- */
-.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:0 18px env(safe-area-inset-bottom)}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 0 10px;min-height:64px}
-.topbar .left,.topbar .right{display:flex;align-items:center;gap:10px;min-width:0}
-.brand{display:flex;flex-direction:column;align-items:center;line-height:1;letter-spacing:.32em;text-transform:uppercase;user-select:none}
-.brand b{font-weight:600;font-size:26px;letter-spacing:.18em;text-shadow:0 1px 0 rgba(255,255,255,.12),0 -1px 0 rgba(0,0,0,.5)}
-.brand small{font-weight:300;font-size:11px;color:var(--text-soft);margin-top:6px;padding-top:6px;border-top:1px solid var(--edge-dark);box-shadow:0 1px 0 var(--edge-light) inset}
-.hero-brand{padding:38px 0 18px;text-align:center}
-.hero-brand .brand b{font-size:40px;font-weight:500}
-.hero-brand .version{margin-top:10px;font-size:10px;opacity:.7}
-.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
-h1,h2,h3{margin:0;font-weight:500}
-h2{font-size:15px;color:var(--text-soft);letter-spacing:.02em}
+/* shell */
+.app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:0 14px env(safe-area-inset-bottom)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(12px + env(safe-area-inset-top)) 2px 10px;min-height:58px}
+.topbar .left,.topbar .right{display:flex;align-items:center;gap:8px;min-width:0}
+.brand{display:flex;align-items:center;gap:10px;line-height:1;user-select:none}
+.brand::before{content:"E";display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9px;background:var(--lime);color:var(--lime-ink);font-weight:800;font-size:16px}
+.brand b{font-weight:600;font-size:16px;letter-spacing:-.01em}
+.brand small{display:none}
+.hero-brand{padding:26px 4px 12px}
+.hero-brand .brand b{font-size:22px}
+.hero-brand .version{margin-top:8px;font-size:11px;color:var(--dim)}
+.eyebrow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:600}
+h1,h2,h3{margin:0;font-weight:600}
+h2{font-size:13px;color:var(--muted);letter-spacing:.02em;font-weight:500;padding:0 4px}
 p{margin:0}
-.muted{color:var(--text-soft)}
-.dim{color:var(--text-dim)}
-.mono{font-family:var(--mono)}
+.muted{color:var(--muted)} .dim{color:var(--dim)} .mono{font-family:var(--mono)}
 
-/* ---------- hardware primitives ---------- */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  padding:0 18px;height:46px;border-radius:12px;font-weight:500;font-size:15px;color:var(--text);
-  background:linear-gradient(180deg,var(--face-hi),var(--face-lo));
-  box-shadow:var(--raise); text-shadow:0 1px 0 rgba(0,0,0,.4);
-  transition:transform .08s ease, box-shadow .08s ease, filter .12s ease; user-select:none; touch-action:manipulation;
-}
-.btn:hover{filter:brightness(1.06)}
-.btn:active,.btn.is-down{transform:translateY(1px);box-shadow:inset 0 2px 6px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.06)}
-.btn.lamp{color:#20242A;text-shadow:0 1px 0 rgba(255,255,255,.35);background:linear-gradient(180deg,#F6F7F9,#CFD3D9);box-shadow:var(--raise),0 0 22px var(--lamp-glow)}
-.btn.lamp:active{box-shadow:inset 0 2px 6px rgba(0,0,0,.35),0 0 12px var(--lamp-glow)}
-.btn.small{height:36px;padding:0 13px;font-size:13px;border-radius:10px}
-.btn.icon{width:46px;padding:0}
-.btn.icon.small{width:36px}
-.btn.ghost{background:none;box-shadow:none;color:var(--text-soft)}
-.btn.ghost:hover{color:var(--text);filter:none}
-.btn.ghost:active{box-shadow:none;transform:none;color:var(--text-dim)}
-.btn.danger{color:#FFB0A9}
-.btn:disabled{opacity:.45;cursor:default;filter:none;transform:none}
+/* primitives: blocks */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;height:52px;border-radius:var(--r2);font-weight:500;font-size:15px;color:var(--text);background:var(--block-2);transition:background .12s,transform .08s,opacity .12s;user-select:none;touch-action:manipulation;white-space:nowrap}
+.btn:hover{background:var(--block-3)}
+.btn:active,.btn.is-down{transform:scale(.985);background:var(--block-3)}
+.btn.lamp{background:var(--lime);color:var(--lime-ink);font-weight:600}
+.btn.lamp:hover{background:#D8FF85}
+.btn.small{height:40px;padding:0 14px;font-size:13.5px;border-radius:13px}
+.btn.icon{width:44px;height:44px;padding:0;border-radius:14px}
+.btn.icon.small{width:36px;height:36px}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--block);color:var(--text)}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.35;cursor:default;transform:none}
 .btn svg{width:18px;height:18px;fill:currentColor;flex:none}
-
-.panel{
-  border-radius:var(--r);padding:16px;
-  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.08));
-  box-shadow:inset 0 1px 0 var(--edge-light),inset 0 0 0 1px rgba(0,0,0,.25),0 10px 24px rgba(0,0,0,.28);
-}
-.well{
-  border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));
-  box-shadow:var(--sink);
-}
-.field{width:100%;padding:12px 14px;border:0;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);color:var(--text);resize:none;line-height:1.55}
-.field::placeholder{color:var(--text-dim)}
-.field:focus{outline:0;box-shadow:var(--sink),0 0 0 2px rgba(241,243,246,.18)}
-select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-deep),var(--well)),none;padding-right:36px;position:relative}
+.btn.rec-on{background:var(--danger);color:#fff}
+.panel{border-radius:var(--r);padding:16px;background:var(--block)}
+.well{border-radius:var(--r2);background:var(--block)}
+.field{width:100%;padding:13px 16px;border:0;border-radius:var(--r2);background:var(--block);color:var(--text);resize:none;line-height:1.55}
+.field::placeholder{color:var(--dim)}
+.field:focus{outline:0;box-shadow:0 0 0 2px var(--lime-line)}
+select.field{appearance:none;padding-right:38px}
 .select-wrap{position:relative}
-.select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:1.5px solid var(--text-soft);border-bottom:1.5px solid var(--text-soft);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.select-wrap::after{content:"";position:absolute;right:16px;top:50%;width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
 
-/* LED */
-.led{width:9px;height:9px;border-radius:50%;background:var(--led-off);box-shadow:inset 0 1px 1px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.08);flex:none}
-.led.now{background:radial-gradient(circle at 40% 35%,#FF9D95,var(--led-now) 60%);box-shadow:0 0 8px rgba(255,90,78,.75),0 0 2px rgba(255,90,78,.9)}
-.led.next{background:radial-gradient(circle at 40% 35%,#B4F0CF,var(--led-next) 60%);box-shadow:0 0 8px rgba(95,211,148,.7)}
-.led.lamp{background:radial-gradient(circle at 40% 35%,#fff,var(--lamp) 60%);box-shadow:0 0 8px var(--lamp-glow)}
+/* leds + keycaps */
+.led{width:8px;height:8px;border-radius:50%;background:var(--led-off);flex:none}
+.led.now{background:var(--led-now);box-shadow:0 0 8px rgba(255,107,107,.6)}
+.led.next,.led.lamp{background:var(--lime);box-shadow:0 0 8px var(--lamp-glow)}
+.led.stale{background:#FFC857;box-shadow:0 0 8px rgba(255,200,87,.6)}
 .led.blink{animation:blink .9s steps(2,start) infinite}
+.led.tiny{width:6px;height:6px;display:inline-block;margin-left:4px;vertical-align:middle}
 @keyframes blink{to{visibility:hidden}}
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 8px;border-radius:7px;font:500 11.5px/1 var(--mono);color:var(--text);background:var(--block-3);vertical-align:middle}
+.key.lit{background:var(--lime);color:var(--lime-ink)}
+.key.x{padding:0;min-width:22px;height:22px;color:var(--muted)}
 
-/* rocker switch */
-.switch{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;text-align:left;padding:12px 0;border-top:1px solid rgba(0,0,0,.3);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
-.switch:first-child{border-top:0;box-shadow:none}
+/* toggles as blocks */
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:12px 0;border-top:1px solid var(--line)}
+.switch:first-child{border-top:0}
 .switch .label{display:flex;flex-direction:column;gap:2px;min-width:0}
-.switch .label span{font-size:15px}
-.switch .label small{font-size:12.5px;color:var(--text-soft)}
-.rocker{position:relative;flex:none;width:58px;height:34px;border-radius:9px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
-.rocker::before{content:"";position:absolute;top:3px;left:3px;width:26px;height:28px;border-radius:7px;background:linear-gradient(180deg,#5A6068,#3C4148);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.35),0 2px 4px rgba(0,0,0,.5);transition:transform .16s cubic-bezier(.3,.9,.4,1.1)}
-.rocker::after{content:"";position:absolute;right:11px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--led-off);box-shadow:inset 0 1px 1px rgba(0,0,0,.6);transition:.16s}
-.switch[aria-checked="true"] .rocker::before{transform:translateX(26px)}
-.switch[aria-checked="true"] .rocker::after{right:auto;left:11px;background:var(--lamp);box-shadow:0 0 8px var(--lamp-glow)}
+.switch .label span{font-size:15px;font-weight:500}
+.switch .label small{font-size:12.5px;color:var(--muted)}
+.rocker{position:relative;flex:none;width:50px;height:30px;border-radius:15px;background:var(--block-3);transition:background .16s}
+.rocker::before{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#8B8B92;transition:transform .16s,background .16s}
+.switch[aria-checked="true"] .rocker{background:var(--lime)}
+.switch[aria-checked="true"] .rocker::before{transform:translateX(20px);background:var(--lime-ink)}
+/* bento tile toggle */
+.tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;text-align:left;min-height:104px;padding:14px 16px;border-radius:var(--r);background:var(--block);transition:background .15s}
+.tile .t{font-size:13.5px;color:var(--muted);font-weight:500}
+.tile .v{font-size:30px;font-weight:600;letter-spacing:-.02em;color:var(--dim);align-self:flex-end;line-height:1}
+.tile[aria-checked="true"]{background:var(--lime-soft);box-shadow:inset 0 0 0 1px var(--lime-line)}
+.tile[aria-checked="true"] .t{color:var(--lime)}
+.tile[aria-checked="true"] .v{color:var(--lime)}
+.tile.wide{grid-column:1 / -1}
 
-/* lit slider (read-through) */
-.track{position:relative;height:10px;border-radius:5px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
-.track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:linear-gradient(180deg,#FAFBFC,#C9CED6);box-shadow:0 0 12px var(--lamp-glow),inset 0 -1px 0 rgba(0,0,0,.2);width:0;transition:width .12s linear}
-.track .thumb{position:absolute;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#F7F8FA,#B9BFC8 70%);box-shadow:0 2px 5px rgba(0,0,0,.6),inset 0 -2px 3px rgba(0,0,0,.2);left:0;transition:left .12s linear}
+/* progress track */
+.track{position:relative;height:6px;border-radius:3px;background:var(--block-3)}
+.track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--lime);width:0;transition:width .12s linear}
+.track .thumb{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--lime);left:0;transition:left .12s linear}
 
-/* keycap */
-.key{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:24px;padding:0 8px;border-radius:6px;font:500 11.5px/1 var(--mono);letter-spacing:.02em;color:var(--text);background:linear-gradient(180deg,var(--face-hi),var(--face-lo));box-shadow:inset 0 1px 0 var(--edge-light),0 2px 0 rgba(0,0,0,.45),0 3px 4px rgba(0,0,0,.3);vertical-align:middle}
-.key.lit{color:#20242A;background:linear-gradient(180deg,#F6F7F9,#CFD3D9);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 0 rgba(0,0,0,.45),0 0 12px var(--lamp-glow)}
-.key.x{padding:0;min-width:22px;height:22px;color:var(--text-soft)}
-
-/* ---------- views ---------- */
-.view{flex:1;display:flex;flex-direction:column;gap:16px;padding-bottom:28px}
-.stack{display:flex;flex-direction:column;gap:12px}
-.row{display:flex;align-items:center;gap:10px}
+/* views */
+.view{flex:1;display:flex;flex-direction:column;gap:var(--gap);padding-bottom:28px}
+.stack{display:flex;flex-direction:column;gap:var(--gap)}
+.row{display:flex;align-items:center;gap:var(--gap)}
 .row.between{justify-content:space-between}
 .grow{flex:1;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}
 
-/* library */
-.script-list{display:flex;flex-direction:column;gap:10px}
-.script-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.06));box-shadow:inset 0 1px 0 var(--edge-light),inset 0 0 0 1px rgba(0,0,0,.25),0 6px 16px rgba(0,0,0,.25);transition:transform .08s}
-.script-card:active{transform:translateY(1px)}
-.script-card .title{font-weight:500;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.script-card .meta{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);margin-top:3px;letter-spacing:.04em}
-.script-card .go{color:var(--text-dim);flex:none}
-.empty{padding:28px 16px;text-align:center;color:var(--text-soft);font-size:14.5px;line-height:1.7}
-.drop{position:relative;border-radius:var(--r);padding:22px 16px;text-align:center;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);color:var(--text-soft);font-size:14.5px;line-height:1.7;transition:box-shadow .12s}
-.drop.over{box-shadow:var(--sink),0 0 0 2px rgba(241,243,246,.35),0 0 24px var(--lamp-glow)}
+/* home */
+.script-list{display:flex;flex-direction:column;gap:var(--gap)}
+.script-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px 18px;border-radius:var(--r);background:var(--block);transition:background .12s}
+.script-card:hover{background:var(--block-2)}
+.script-card .title{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.script-card .meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+.script-card .go{color:var(--dim);flex:none}
+.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:14px;line-height:1.7;border-radius:var(--r);background:var(--block)}
+.drop{position:relative;border-radius:var(--r);padding:22px 16px;text-align:center;background:var(--block);color:var(--muted);font-size:14px;line-height:1.7;border:1.5px dashed var(--block-3);transition:border-color .12s}
+.drop.over{border-color:var(--lime)}
 .drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.drop strong{display:block;color:var(--text);font-weight:500;font-size:15.5px}
-.drop .formats{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--text-dim);margin-top:6px}
+.drop strong{display:block;color:var(--text);font-weight:600;font-size:15.5px}
+.drop .formats{font-size:11px;letter-spacing:.08em;color:var(--dim);margin-top:6px}
 
 /* editor */
-.title-input{font-size:20px;font-weight:500;padding:12px 14px}
-.sent-list{display:flex;flex-direction:column;gap:8px;counter-reset:s}
-.sent{position:relative;display:grid;grid-template-columns:36px 1fr;gap:0 8px;padding:10px 10px 10px 6px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .12s}
-.sent.focus{box-shadow:var(--sink),0 0 0 2px rgba(241,243,246,.18)}
-.sent .num{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;padding-top:9px;letter-spacing:.02em}
+.title-input{font-size:19px;font-weight:600;padding:14px 16px}
+.sent-list{display:flex;flex-direction:column;gap:8px}
+.sent{position:relative;display:grid;grid-template-columns:30px 1fr;gap:0 8px;padding:10px 12px 10px 8px;border-radius:var(--r2);background:var(--block);transition:box-shadow .12s}
+.sent.focus{box-shadow:0 0 0 2px var(--lime-line)}
+.sent .num{font-size:11px;color:var(--dim);text-align:right;padding-top:9px}
 .sent textarea{grid-column:2;width:100%;border:0;background:none;padding:6px 4px;line-height:1.6;resize:none;overflow:hidden;color:var(--text);min-height:36px}
 .sent textarea:focus{outline:0}
 .sent .tools{grid-column:2;display:none;flex-wrap:wrap;gap:6px;padding:6px 0 2px}
 .sent.focus .tools{display:flex}
-.sent .len{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-left:auto;align-self:center;letter-spacing:.04em}
-.hint{font-size:13px;color:var(--text-dim);line-height:1.6}
-.plain-link{color:var(--text-soft);text-decoration:underline;text-underline-offset:3px}
+.sent .len{font-size:11px;color:var(--dim);margin-left:auto;align-self:center}
+.hint{font-size:12.5px;color:var(--dim);line-height:1.6;padding:0 4px}
+.hint.center{text-align:center;padding:10px 6px 0}
+.warn-text{color:var(--danger)}
+.plain-link{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.rec-entry{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px 18px;border-radius:var(--r);background:var(--block);color:var(--text)}
+.rec-entry:hover{background:var(--block-2)}
+.rec-entry .t{display:block;font-weight:600;font-size:15px}
+.rec-entry small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.rec-entry svg{width:20px;height:20px;fill:var(--muted);flex:none}
+.rec-count{font-size:12px;color:var(--muted);white-space:nowrap}
+.rec-count b{color:var(--text);font-weight:600}
 
 /* stage */
-.stage{gap:0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+.stage{gap:var(--gap);padding-bottom:calc(14px + env(safe-area-inset-bottom))}
 .stage.swipe-mode{touch-action:none;overscroll-behavior:none}
-.stage.swipe-mode .knob{touch-action:none}
+.stage-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);padding:2px 6px 2px}
+.stage-head .counter{font-size:22px;color:var(--text);font-weight:600;letter-spacing:-.02em}
+.stage-head .counter small{font-size:13px;color:var(--dim);margin-left:4px;font-weight:500}
+.lyrics{position:relative;height:min(46vh,420px);border-radius:var(--r);overflow:hidden;background:var(--block);transition:box-shadow .25s}
+.lyrics.speaking{box-shadow:inset 0 0 0 1.5px var(--lime-line)}
+.ly-list{position:absolute;inset:0;padding:0 18px 64px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%);mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%)}
+.ly-list::-webkit-scrollbar{display:none}
+.ly-pad{height:42%}
+.ly{display:grid;grid-template-columns:24px 1fr;gap:0 8px;align-items:baseline;padding:8px 0;transition:color .3s ease}
+.ly .n{font-size:11px;color:var(--dim);text-align:right}
+.ly .text{font-size:var(--script-size,18px);line-height:1.55;color:var(--muted);word-break:keep-all;overflow-wrap:anywhere;transition:color .3s ease}
+.ly.before .text{color:var(--dim)}
+.ly.now .n{color:var(--lime)}
+.ly.now .text{color:var(--lime);font-weight:600}
+.ly.now .text .said{color:#fff}
+.ly-foot{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 14px;background:linear-gradient(180deg,rgba(34,34,36,0),rgba(34,34,36,.97) 45%)}
+.ly-foot .tag{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:600}
+.ly-foot .tag .n{margin-left:auto;color:var(--dim);letter-spacing:0}
+.status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--dim);min-height:20px;padding:0 6px}
+.status .chip{display:inline-flex;align-items:center;gap:6px}
+.status .chip.on{color:var(--text)}
+.status .chip.warn{color:var(--danger)}
+.transport{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:var(--gap)}
+.transport .btn{height:60px;border-radius:var(--r);font-size:15.5px}
+.transport .btn svg{width:20px;height:20px}
+.deck{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}
+.speed{grid-column:1 / -1;padding:14px 18px 16px;border-radius:var(--r);background:var(--block);display:flex;flex-direction:column;gap:6px}
+.speed .top{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);font-weight:500}
+.speed .val{font-size:56px;font-weight:600;letter-spacing:-.03em;text-align:center;line-height:1.05;margin:4px 0}
+.speed .val small{font-size:22px;color:var(--muted);margin-left:2px;font-weight:500}
+.range{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
+.range::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:linear-gradient(90deg,var(--lime) var(--pct,30%),var(--block-3) var(--pct,30%))}
+.range::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--lime);margin-top:-9.5px;box-shadow:0 0 0 4px var(--bg)}
+.range::-moz-range-track{height:3px;border-radius:2px;background:var(--block-3)}
+.range::-moz-range-progress{height:3px;background:var(--lime)}
+.range::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:var(--lime)}
+.speed .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);padding:0 4px}
+.remote-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--dim);padding:6px 4px 0;line-height:2.2}
+.remote-line .key{min-width:24px;height:22px;padding:0 6px;font-size:11px}
 body.swipe-lock{overflow:hidden;height:100dvh;touch-action:none;overscroll-behavior:none}
 html:has(body.swipe-lock){overflow:hidden;touch-action:none}
 body.swipe-lock .app{height:100dvh;overflow:hidden}
-body.swipe-lock .topbar{padding-top:calc(6px + env(safe-area-inset-top));min-height:48px}
-body.swipe-lock .brand b{font-size:20px}
-body.swipe-lock .brand small{display:none}
-body.swipe-lock .stage-head{padding-bottom:6px}
-body.swipe-lock .cue{padding:6px 0}
-body.swipe-lock .cue.now{padding:12px 16px 14px}
-body.swipe-lock .cue.now .text{font-size:clamp(19px,5vw,26px);min-height:2.6em}
-body.swipe-lock .cue.now .track{margin-top:10px}
-body.swipe-lock .cue.next .text{-webkit-line-clamp:2;font-size:14px}
-body.swipe-lock .transport .btn{height:52px}
-body.swipe-lock .deck{margin-top:8px;gap:10px}
-body.swipe-lock .knob{width:104px;height:104px}
-body.swipe-lock .knob .ticks i{transform-origin:50% 46px;top:4px;height:6px}
-body.swipe-lock .knob .ticks i.major{height:8px}
-body.swipe-lock .knob .labels span{transform-origin:50% 66px;top:-14px}
-body.swipe-lock .knob .cap{inset:16px}
-body.swipe-lock .knob-wrap{padding-top:12px;gap:2px}
-body.swipe-lock .knob-readout .val{font-size:17px}
-body.swipe-lock .knob-label{display:none}
-body.swipe-lock .deck .switch{padding:6px 0}
-body.swipe-lock .deck .switch .label small{display:none}
-body.swipe-lock .remote-line{display:none}
-body.swipe-lock .status{min-height:20px;padding:2px 2px}
-.stage-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:13px;color:var(--text-soft);padding:4px 0 14px;letter-spacing:.06em}
-.stage-head .counter{font-size:22px;color:var(--text);letter-spacing:.08em}
-.stage-head .counter small{font-size:13px;color:var(--text-dim);margin-left:4px}
-.cue{display:flex;flex-direction:column;gap:6px;padding:12px 0}
-.cue .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
-.cue .text{color:var(--text-soft);font-size:15px;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}
-.cue.prev .text{color:var(--text-dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.cue.now{padding:16px 18px 18px;border-radius:var(--r);background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
-.cue.now .tag{color:var(--text-soft)}
-.cue.now .text{color:var(--lamp);font-size:clamp(21px,5.6vw,30px);font-weight:400;line-height:1.5;text-shadow:0 0 18px rgba(241,243,246,.18);min-height:2.9em}
-.cue.now .track{margin-top:16px}
-.cue.next .text{color:var(--text);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.cue.next .tag{color:var(--led-next)}
-.status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--text-dim);min-height:24px;padding:6px 2px}
-.status .chip{display:inline-flex;align-items:center;gap:7px;letter-spacing:.04em}
-.status .chip.on{color:var(--text)}
-.status .chip.warn{color:#FFB0A9}
-.transport{display:grid;grid-template-columns:1fr 1fr 1.35fr;margin-top:8px;border-radius:14px;padding:3px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
-.transport .btn{border-radius:11px;height:62px;font-size:15.5px;padding:0 6px;white-space:nowrap;gap:6px;box-shadow:inset 0 1px 0 var(--edge-light),inset 0 -1px 0 rgba(0,0,0,.35),0 3px 8px rgba(0,0,0,.35)}
-.transport .btn:active,.transport .btn.is-down{box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
-.transport .btn svg{width:22px;height:22px}
-.transport .btn + .btn{margin-left:3px}
-
-/* scrolling script */
-:root{--neon:#5CFF9D}
-.lyrics{position:relative;height:min(64vh,540px);border-radius:var(--r);overflow:hidden;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .25s}
-.lyrics.speaking{box-shadow:var(--sink),0 0 0 1px rgba(92,255,157,.25),0 0 28px rgba(92,255,157,.12)}
-.ly-list{position:absolute;inset:0;padding:0 18px 64px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%);mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%)}
-.ly-list::-webkit-scrollbar{display:none}
-.ly-pad{height:42%}
-.ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:8px 0;transition:color .3s ease}
-.ly .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;letter-spacing:.04em}
-.ly .text{font-size:var(--script-size,18px);line-height:1.55;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;transition:color .3s ease}
-.ly.before .text{color:var(--text-dim)}
-.ly.now .n{color:var(--neon)}
-.ly.now .text{color:var(--neon);font-weight:500;text-shadow:0 0 14px rgba(92,255,157,.35)}
-.ly-foot{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 14px;background:linear-gradient(180deg,rgba(28,31,35,0),rgba(30,33,38,.96) 45%)}
-.ly-foot .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px}
-.ly-foot .tag .n{margin-left:auto;color:var(--text-dim);letter-spacing:.04em}
-body.swipe-lock .lyrics{height:max(280px,calc(100dvh - 430px))}
+body.swipe-lock .lyrics{height:max(260px,calc(100dvh - 470px))}
 body.swipe-lock .ly-list{touch-action:none}
-body.swipe-lock .ly{padding:6px 0}
-
-/* knob */
-.deck{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;margin-top:18px}
-.knob-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;user-select:none}
-.knob{position:relative;width:148px;height:148px;border-radius:50%;touch-action:none;cursor:grab;
-  background:radial-gradient(circle at 50% 30%,#4C525A,#2B2F35 75%);
-  box-shadow:inset 0 2px 4px rgba(255,255,255,.12),inset 0 -6px 10px rgba(0,0,0,.55),0 14px 28px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.4)}
-.knob:active{cursor:grabbing}
-.knob .ticks{position:absolute;inset:0;border-radius:50%}
-.knob .ticks i{position:absolute;left:50%;top:6px;width:2px;height:8px;margin-left:-1px;background:var(--text-dim);border-radius:1px;transform-origin:50% 68px}
-.knob .ticks i.major{height:11px;background:var(--text-soft)}
-.knob .labels{position:absolute;inset:0;border-radius:50%;pointer-events:none}
-.knob .labels span{position:absolute;left:50%;top:-16px;width:24px;height:16px;margin-left:-12px;transform-origin:50% 90px;display:flex;justify-content:center}
-.knob .labels b{font:400 10px/1 var(--mono);color:var(--text-dim);letter-spacing:.02em}
-.knob-wrap{padding-top:16px}
-.knob .cap{position:absolute;inset:22px;border-radius:50%;
-  background:radial-gradient(circle at 50% 28%,#4A4F57,#33373D 60%,#2C3036);
-  box-shadow:inset 0 2px 3px rgba(255,255,255,.14),inset 0 -4px 8px rgba(0,0,0,.5),0 6px 12px rgba(0,0,0,.55);
-  transition:transform .06s linear}
-.knob .cap::after{content:"";position:absolute;left:50%;top:12px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#F7F8FA,#B0B6BF 70%);box-shadow:0 0 10px var(--lamp-glow),inset 0 -1px 2px rgba(0,0,0,.35)}
-.knob-readout{display:flex;align-items:center;gap:18px;font-family:var(--mono)}
-.knob-readout .val{font-size:22px;color:var(--text);letter-spacing:.04em;min-width:60px;text-align:center}
-.knob-readout .btn{width:34px;height:30px;font-size:20px;line-height:1;color:var(--text-soft);border-radius:8px}
-.knob-label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap}
-.deck .switches{display:flex;flex-direction:column;min-width:0}
-.deck .switch{padding:10px 0}
-.remote-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);padding:16px 2px 0;line-height:2.2}
-.remote-line .key{min-width:24px;height:22px;padding:0 6px;font-size:11px}
-.remote-line .sep{opacity:.5}
-
-/* recording */
-.rec-entry{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.06));box-shadow:inset 0 1px 0 var(--edge-light),inset 0 0 0 1px rgba(0,0,0,.25),0 6px 16px rgba(0,0,0,.25);color:var(--text)}
-.rec-entry .t{display:block;font-weight:500;font-size:15.5px}
-.rec-entry small{display:block;font-size:12.5px;color:var(--text-soft);margin-top:2px}
-.rec-entry svg{width:20px;height:20px;fill:var(--text-soft);flex:none}
-.rec-entry:active{transform:translateY(1px)}
-.led.tiny{width:6px;height:6px;display:inline-block;margin-left:4px;vertical-align:middle}
-.rec-count{font-size:12px;color:var(--text-dim);letter-spacing:.06em;white-space:nowrap}
-.rec-count b{color:var(--text);font-weight:500}
-.btn.rec-on{color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.35);background:linear-gradient(180deg,#FF7B71,#D2453B);box-shadow:var(--raise),0 0 24px rgba(255,90,78,.45)}
-.btn.rec-on:active{box-shadow:inset 0 2px 6px rgba(0,0,0,.45)}
-.hint.center{text-align:center;padding:10px 6px 0}
-.center-row{justify-content:center;margin-top:14px}
-.switches.bottom{margin-top:auto;padding-top:14px}
-.seg{display:grid;grid-template-columns:1fr 1fr;padding:3px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);margin-bottom:10px}
-.seg button{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:9px;font-size:14px;color:var(--text-soft)}
-.seg button svg{width:16px;height:16px;fill:currentColor}
-.seg button[aria-checked="true"]{color:var(--text);background:linear-gradient(180deg,var(--face-hi),var(--face-lo));box-shadow:inset 0 1px 0 var(--edge-light),0 3px 8px rgba(0,0,0,.35)}
-
-/* AI voice */
-.led.stale{background:radial-gradient(circle at 40% 35%,#FFE0A3,#F2B544 60%);box-shadow:0 0 8px rgba(242,181,68,.7)}
-.seg.presets{grid-template-columns:1fr 1fr;gap:3px}
-.seg.presets button{flex-direction:column;align-items:flex-start;height:auto;padding:10px 12px;text-align:left;gap:2px}
-.seg.presets button b{font-weight:500;font-size:14px}
-.seg.presets button small{font-size:11.5px;color:var(--text-dim);line-height:1.4}
-.seg.presets button[aria-checked="true"] small{color:var(--text-soft)}
-.ai-summary{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);letter-spacing:.04em}
-.ai-summary b{color:var(--text);font-weight:500;margin-right:3px}
-.panel .t{font-weight:500;font-size:15px}
-.panel small.muted{display:block;font-size:12.5px;margin-top:2px}
+body.swipe-lock .remote-line{display:none}
+body.swipe-lock .speed .val{font-size:40px}
+body.swipe-lock .tile{min-height:84px}
 
 /* sheet */
-.sheet-bg{position:fixed;inset:0;background:rgba(10,12,15,.55);backdrop-filter:blur(3px);opacity:0;transition:opacity .2s;z-index:20}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);opacity:0;transition:opacity .2s;z-index:20}
 .sheet-bg.open{opacity:1}
-.sheet{position:fixed;left:0;right:0;bottom:0;max-height:86vh;overflow:auto;margin:0 auto;max-width:560px;border-radius:20px 20px 0 0;padding:14px 18px calc(24px + env(safe-area-inset-bottom));z-index:21;
-  background:linear-gradient(180deg,#3F444C,#31353B);box-shadow:inset 0 1px 0 var(--edge-light),0 -18px 40px rgba(0,0,0,.5);transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;margin:0 auto;max-width:520px;border-radius:26px 26px 0 0;padding:12px 16px calc(24px + env(safe-area-inset-bottom));z-index:21;background:var(--block);transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
 .sheet.open{transform:none}
-.sheet .grip{width:42px;height:5px;border-radius:3px;margin:0 auto 14px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
-.sheet h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-family:var(--mono);color:var(--text-dim);margin:18px 0 8px}
+.sheet .grip{width:40px;height:4px;border-radius:2px;margin:0 auto 14px;background:var(--block-3)}
+.sheet h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 0 8px;font-weight:600}
 .sheet h2:first-of-type{margin-top:4px}
+.sheet .field,.sheet .well,.sheet .seg,.sheet .sig-mon{background:var(--bg)}
 .setting{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
 .setting .label{display:flex;flex-direction:column;gap:2px}
-.setting .label small{font-size:12.5px;color:var(--text-soft)}
+.setting .label small{font-size:12.5px;color:var(--muted)}
 .stepper{display:flex;align-items:center;gap:6px}
-.stepper .btn{width:34px;height:34px;padding:0;font-size:18px;color:var(--text-soft);border-radius:9px}
-.stepper .val{font-family:var(--mono);min-width:54px;text-align:center;font-size:15px}
-.keymap-row{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(0,0,0,.25);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
-.keymap-row:first-of-type{border-top:0;box-shadow:none}
+.stepper .btn{width:36px;height:36px;padding:0;font-size:18px;border-radius:11px;background:var(--block-3)}
+.stepper .val{min-width:54px;text-align:center;font-size:15px;font-weight:600}
+.keymap-row{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.keymap-row:first-of-type{border-top:0}
 .keymap-row .keys{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:28px}
-.keymap-row .keys .k{display:inline-flex;align-items:stretch;border-radius:7px;background:linear-gradient(180deg,var(--face-hi),var(--face-lo));box-shadow:inset 0 1px 0 var(--edge-light),0 2px 0 rgba(0,0,0,.45),0 3px 4px rgba(0,0,0,.3)}
-.keymap-row .keys .k .key{box-shadow:none;background:none;border-radius:0}
-.keymap-row .keys .k button{width:22px;height:24px;font-size:13px;color:var(--text-dim);border-left:1px solid rgba(0,0,0,.35);border-radius:0 7px 7px 0}
-.keymap-row .keys .k button:hover{color:var(--text)}
-.keymap-row .empty-keys{font-size:12px;color:var(--text-dim)}
-.sig-mon{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font-family:var(--mono);font-size:11.5px}
+.keymap-row .keys .k{display:inline-flex;align-items:stretch;border-radius:7px;background:var(--block-3);overflow:hidden}
+.keymap-row .keys .k .key{background:none;border-radius:0}
+.keymap-row .keys .k button{width:22px;height:24px;font-size:13px;color:var(--muted);border-left:1px solid var(--line)}
+.keymap-row .empty-keys{font-size:12px;color:var(--dim)}
+.learn-note{font-size:12px;color:var(--lime);animation:blink 1s steps(2,start) infinite}
+.sig-mon{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:var(--r2);background:var(--bg);font-size:11.5px}
 .sig-mon .sig{display:flex;align-items:center;gap:10px}
-.wiz-title{font-size:28px;font-weight:500;margin-top:4px}
-.wiz-desc{font-size:16px;color:var(--text-soft);line-height:1.6}
+.diag-list{margin:0;padding:12px 14px;border-radius:var(--r2);background:var(--block);font:12px/1.7 var(--mono);color:var(--text);white-space:pre-wrap;word-break:break-all;min-height:50vh;max-height:66vh;overflow:auto}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0;background:transparent}
+.seg button{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:var(--r2);font-size:14px;color:var(--muted);background:var(--block-2)}
+.seg button svg{width:16px;height:16px;fill:currentColor}
+.seg button[aria-checked="true"]{color:var(--lime);background:var(--lime-soft);box-shadow:inset 0 0 0 1px var(--lime-line)}
+.seg.mini{grid-template-columns:repeat(3,44px)}
+.seg.presets button{flex-direction:column;align-items:flex-start;height:auto;padding:12px 14px;text-align:left;gap:3px}
+.seg.presets button b{font-weight:600;font-size:14px;color:var(--text)}
+.seg.presets button small{font-size:11.5px;color:var(--muted);line-height:1.4}
+.seg.presets button[aria-checked="true"] b{color:var(--lime)}
+.ai-summary{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.ai-summary b{color:var(--text);font-weight:600;margin-right:3px}
+.panel .t{font-weight:600;font-size:15px}
+.panel small.muted{display:block;font-size:12.5px;margin-top:2px}
+.wiz-title{font-size:28px;font-weight:600;margin-top:4px;letter-spacing:-.02em}
+.wiz-desc{font-size:15.5px;color:var(--muted);line-height:1.6}
 .wiz-wait{display:flex;align-items:center;gap:10px;padding:18px 0}
-.wiz-row{padding:8px 0;border-top:1px solid rgba(0,0,0,.25)}
+.wiz-row{padding:8px 0;border-top:1px solid var(--line)}
 .wiz-row:first-child{border-top:0}
-.wiz-row.cur{color:var(--lamp)}
-.warn-text{color:#FFB0A9}
-.diag-list{margin:0;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font:12px/1.7 var(--mono);color:var(--text);white-space:pre-wrap;word-break:break-all;min-height:50vh;max-height:66vh;overflow:auto}
-.learn-note{font-family:var(--mono);font-size:12px;color:var(--lamp);animation:blink 1s steps(2,start) infinite}
-
-.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translate(-50%,20px);padding:10px 16px;border-radius:12px;background:linear-gradient(180deg,#F6F7F9,#CFD3D9);color:#20242A;font-size:14px;font-weight:500;box-shadow:var(--raise),0 0 22px var(--lamp-glow);opacity:0;pointer-events:none;transition:.22s;z-index:30;max-width:calc(100% - 36px);text-align:center}
+.wiz-row.cur{color:var(--lime)}
+.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translate(-50%,20px);padding:11px 18px;border-radius:14px;background:var(--lime);color:var(--lime-ink);font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.22s;z-index:30;max-width:calc(100% - 36px);text-align:center}
 .toast.show{opacity:1;transform:translate(-50%,0)}
-
-.done-card{padding:26px 18px;text-align:center;border-radius:var(--r);background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
-.done-card .big{font-size:22px;color:var(--lamp);margin-bottom:8px}
-
-@media (min-width:720px){
-  .app{max-width:640px}
-  .knob{width:172px;height:172px}
-  .knob .ticks i{transform-origin:50% 80px;top:7px}
-  .knob .labels span{transform-origin:50% 102px}
-  .knob .cap{inset:26px}
-}
-@media (prefers-reduced-motion:reduce){
-  *{transition:none!important;animation:none!important}
-}
+.done-card{padding:28px 18px;text-align:center;border-radius:var(--r);background:var(--block)}
+.done-card .big{font-size:22px;color:var(--text);font-weight:600;margin-bottom:8px}
+.center-row{justify-content:center;margin-top:4px}
+.switches.bottom{margin-top:auto;padding-top:14px}
+/* sliders in voice screen */
+.slider-row{display:grid;grid-template-columns:72px 1fr 44px;align-items:center;gap:10px;padding:6px 0}
+.slider-row .l{font-size:13px;color:var(--muted)}
+.slider-row .v{font-size:13px;text-align:right;color:var(--text);font-weight:600}
+.big-timer{font-size:56px;font-weight:600;letter-spacing:-.03em;text-align:center;line-height:1.1}
+.guide{max-height:200px;overflow:auto;padding:12px 14px;border-radius:var(--r2);background:var(--bg);font-size:15px;line-height:1.7;color:var(--muted)}
+@media (min-width:720px){.app{max-width:600px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.ly-list{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -421,7 +337,7 @@ const DEFAULT_KEYMAP = {
   prev: ['PageUp', 'ArrowLeft', 'ArrowUp', 'Media:prev', 'Swipe↓'],
   play: ['F5', '.', 'Enter', 'b', 'Media:play', 'Tap'],
 };
-const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, fontSize: 18, elVoiceId: '', elVoiceName: '', elPreset: 'calm', elKeepRec: true };
+const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, fontSize: 18, elVoiceId: '', elVoiceName: '', elProfile: 'jobs', elStyle: { speed: 0.92, pause: 0.6, style: 0.25, stability: 0.6 }, elKeepRec: true, polish: false };
 
 const store = {
   load(k, d) { try { const v = localStorage.getItem('earcuelab.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -554,12 +470,22 @@ const recorder = {
 /* ---------------- ElevenLabs: cloned voice + generated sentences ----------------
    The API key is typed by the user into the app and kept in this browser only; every call goes straight to
    api.elevenlabs.io from the device. Generated clips are stored beside the presenter's own recordings. */
-const PRESETS = {
-  calm:     { label: '차분한 강연',  desc: '안정적이고 또박또박, 조금 느리게',      v: { stability: 0.7,  similarity_boost: 0.8,  style: 0.15, speed: 0.95, use_speaker_boost: true } },
-  strong:   { label: '힘 있는 연설', desc: '억양이 크고 강조가 분명함',            v: { stability: 0.3,  similarity_boost: 0.75, style: 0.55, speed: 1.0,  use_speaker_boost: true } },
-  friendly: { label: '친근한 발표',  desc: '가볍고 부드럽게, 약간 빠르게',         v: { stability: 0.45, similarity_boost: 0.75, style: 0.35, speed: 1.05, use_speaker_boost: true } },
-  neutral:  { label: '내 녹음 그대로', desc: '녹음 샘플의 말투를 최대한 유지',      v: { stability: 0.5,  similarity_boost: 0.85, style: 0.0,  speed: 1.0,  use_speaker_boost: true } },
+/* Delivery profiles distilled from well-known speaking styles. Four axes drive the voice:
+   speed (ElevenLabs 0.7–1.2), pause (seconds inserted at commas), style (expressiveness 0–1), stability (0–1). */
+const PROFILES = {
+  jobs:     { label: '잡스 · 제품 발표', desc: '느린 템포, 긴 침묵으로 기대감, 짧은 문장에 힘', analysis: '문장 사이 1초 안팎의 침묵을 두고, 핵심 단어 앞에서 속도를 늦추며, 감정 기복은 작게 유지합니다.', v: { speed: 0.9, pause: 0.9, style: 0.2, stability: 0.65 } },
+  ted:      { label: 'TED 강연',      desc: '자연스러운 대화 톤, 또렷한 리듬',              analysis: '보통 속도에 짧은 쉼, 적당한 표현력으로 이야기하듯 이어갑니다.', v: { speed: 1.0, pause: 0.4, style: 0.35, stability: 0.5 } },
+  obama:    { label: '오바마 · 연설',  desc: '신중한 템포, 구절마다 쉼, 낮고 안정된 강조',   analysis: '구절 단위로 쉬어 가며 리듬을 만들고, 목소리는 안정적으로 유지하면서 강조는 분명하게 줍니다.', v: { speed: 0.93, pause: 0.7, style: 0.45, stability: 0.55 } },
+  energy:   { label: '동기부여 · 열정', desc: '빠르고 힘 있게, 표현력 최대',                analysis: '속도를 올리고 쉼을 줄여 몰아치며, 표현력을 크게 열어 감정을 싣습니다.', v: { speed: 1.08, pause: 0.25, style: 0.65, stability: 0.3 } },
 };
+const styleOf = () => Object.assign({ speed: 1, pause: 0.4, style: 0.3, stability: 0.5 }, settings.elStyle || {});
+const styleKey = (st) => [st.speed, st.pause, st.style, st.stability].map((x) => Number(x).toFixed(2)).join('|');
+/* pauses become real breaks inside the sentence; ElevenLabs reads <break time="0.8s" /> as silence */
+function withPauses(text, pause) {
+  if (!pause || pause < 0.15) return text;
+  const t = (pause).toFixed(1) + 's';
+  return text.replace(/([,，、])\s*/g, `$1 <break time="${t}" /> `).replace(/([:：;；])\s*/g, `$1 <break time="${t}" /> `);
+}
 const textHash = (t) => { let h = 5381; const n = normalize(t); for (let i = 0; i < n.length; i++) h = ((h << 5) + h + n.charCodeAt(i)) | 0; return String(h); };
 const extOf = (mime) => /mp4|aac/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : /wav/.test(mime) ? 'wav' : /mpeg/.test(mime) ? 'mp3' : 'webm';
 const eleven = {
@@ -592,8 +518,9 @@ const eleven = {
     blobs.forEach((b, i) => fd.append('files', b, `sample-${i + 1}.${extOf(b.type)}`));
     return this.req('/voices/add', { method: 'POST', body: fd }).then((r) => r.json());
   },
-  async speak(voiceId, text, preset, ctx = {}) {
-    const body = { text, model_id: this.model, voice_settings: PRESETS[preset].v };
+  async speak(voiceId, text, st, ctx = {}) {
+    const vs = { stability: st.stability, similarity_boost: 0.8, style: st.style, speed: clamp(st.speed, 0.7, 1.2), use_speaker_boost: true };
+    const body = { text: withPauses(text, st.pause), model_id: this.model, voice_settings: vs };
     if (ctx.prev) body.previous_text = ctx.prev; if (ctx.next) body.next_text = ctx.next;
     const res = await this.req(`/text-to-speech/${voiceId}?output_format=mp3_44100_128`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     return res.blob();
@@ -643,7 +570,7 @@ function aiPlan(script) {
   for (const x of script.sentences) {
     const r = recs.get(x.id); const t = x.text.trim(); if (!t) continue;
     if (r && r.kind === 'rec' && settings.elKeepRec) { plan.kept.push(x); continue; }
-    if (r && r.kind === 'ai' && r.textHash === textHash(t) && r.preset === settings.elPreset && r.voiceId === settings.elVoiceId) { plan.fresh.push(x); continue; }
+    if (r && r.kind === 'ai' && r.textHash === textHash(t) && r.preset === styleKey(styleOf()) && r.voiceId === settings.elVoiceId) { plan.fresh.push(x); continue; }
     (r && r.kind === 'ai' ? plan.stale : plan.missing).push(x); plan.chars += t.length;
   }
   return plan;
@@ -660,12 +587,64 @@ async function generateAll(script, onTick) {
       const i = script.sentences.indexOf(x);
       const ctx = { prev: i > 0 ? script.sentences[i - 1].text : '', next: i < script.sentences.length - 1 ? script.sentences[i + 1].text : '' };
       aiJob.note = `${i + 1}번 문장 생성 중`; onTick && onTick();
-      const blob = await eleven.speak(settings.elVoiceId, x.text.trim(), settings.elPreset, ctx);
+      const blob = await eleven.speak(settings.elVoiceId, x.text.trim(), styleOf(), ctx);
       const duration = await blobDuration(blob, x.text.length / 5.5 * 1000);
-      await saveRec(script, x.id, { blob, duration, mime: blob.type || 'audio/mpeg' }, { kind: 'ai', textHash: textHash(x.text), preset: settings.elPreset, voiceId: settings.elVoiceId });
+      await saveRec(script, x.id, { blob, duration, mime: blob.type || 'audio/mpeg' }, { kind: 'ai', textHash: textHash(x.text), preset: styleKey(styleOf()), voiceId: settings.elVoiceId });
       aiJob.done++; onTick && onTick();
     }
   } finally { aiJob.running = false; aiJob.note = ''; onTick && onTick(); }
+}
+
+/* ---------------- Claude: polish a pasted script for speaking ---------------- */
+const POLISH_SYSTEM = `당신은 발표 대본 편집자입니다. 사용자가 준 대본을 청중 앞에서 소리 내어 말하기 좋게 다듬습니다.
+규칙:
+- 내용, 사실, 숫자, 고유명사, 주장 순서는 그대로 둡니다. 새로운 사실이나 예시를 추가하지 않습니다.
+- 문어체를 자연스러운 구어체(합니다체)로 바꾸고, 한 문장에 한 생각만 담아 짧게(대체로 15~30자) 끊습니다.
+- 어려운 접속사와 군더더기를 덜어내고, 말할 때 호흡이 끊기지 않게 어순을 정리합니다.
+- 각 문장은 마침표, 물음표, 느낌표 중 하나로 끝냅니다. 문단은 빈 줄로 나눕니다.
+- 출력은 다듬은 대본 본문만 냅니다. 제목, 설명, 목록 기호, 마크다운, 따옴표는 쓰지 않습니다.`;
+const claude = {
+  key() { return store.load('claude', {}).key || ''; },
+  setKey(k) { store.save('claude', { key: String(k || '').trim() }); },
+  async client() {
+    if (!this.key()) throw new Error('Claude API 키를 먼저 입력하세요');
+    if (!this._mod) this._mod = await import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@latest/+esm').catch(() => { throw new Error('Claude SDK를 불러올 수 없습니다. 인터넷 연결을 확인하세요'); });
+    const Anthropic = this._mod.default || this._mod.Anthropic;
+    return new Anthropic({ apiKey: this.key(), dangerouslyAllowBrowser: true });
+  },
+  async polish(text) {
+    const c = await this.client();
+    let res;
+    try {
+      res = await c.beta.messages.create({
+        model: 'claude-opus-5', max_tokens: 16000,
+        betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+        output_config: { effort: 'medium' },
+        system: POLISH_SYSTEM,
+        messages: [{ role: 'user', content: text }],
+      });
+    } catch (e) {
+      const st = e && e.status;
+      throw new Error(st === 401 ? 'Claude API 키가 올바르지 않습니다' : st === 429 ? '요청이 많아 잠시 후 다시 시도하세요' : (e && e.message) || '다듬기에 실패했습니다');
+    }
+    if (res.stop_reason === 'refusal') throw new Error('이 대본은 AI가 다듬을 수 없다고 판단했습니다');
+    const out = res.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    if (!out) throw new Error('다듬은 결과가 비어 있습니다');
+    return out;
+  },
+};
+async function polishScript(script) {
+  toast('AI가 대본을 다듬는 중…');
+  try {
+    const polished = await claude.polish(script.sentences.map((x) => x.text).join('\n'));
+    const sentences = mkSentences(splitSentences(polished));
+    if (!sentences.length) throw new Error('다듬은 결과에서 문장을 찾지 못했습니다');
+    script.original = script.original || script.sentences.map((x) => x.text);
+    await removeAllRecs(script.id);
+    script.sentences = sentences; script.recCount = 0; script.polished = true; script.updatedAt = Date.now(); saveScripts();
+    toast(`AI가 ${sentences.length}개 문장으로 다듬었습니다`);
+    if (state.view === 'edit' && state.scriptId === script.id) renderEditor();
+  } catch (e) { toast(e.message); }
 }
 
 /* ---------------- TTS engine ---------------- */
@@ -854,7 +833,7 @@ const listener = {
 };
 
 /* ---------------- app state / router ---------------- */
-const state = { view: 'home', scriptId: null, idx: 0, progress: 0, startedAt: 0, autoTimer: 0, autoDue: 0, lastKey: '', installPrompt: null, learning: null, ttsNote: '', lastSignal: '', usingRec: false, recMissing: false, speakT0: 0, recording: false };
+const state = { view: 'home', scriptId: null, idx: 0, progress: 0, startedAt: 0, autoTimer: 0, autoDue: 0, lastKey: '', installPrompt: null, learning: null, ttsNote: '', lastSignal: '', ttsEndAt: 0, naturalMs: 0, spoken: 0, usingRec: false, recMissing: false, speakT0: 0, recording: false };
 let sheetOpen = false;
 let wakeLock = null;
 
@@ -867,7 +846,7 @@ async function route() {
   const seq = ++routeSeq;
   if (view === 'diag') { state.view = 'diag'; render(); return; }
   if (view === 'setup') { state.view = 'setup'; wizard.step = 0; wizard.got = {}; wizard.dup = ''; render(); return; }
-  if (['edit', 'stage', 'record', 'ai'].includes(view) && scripts.find((s) => s.id === id)) {
+  if (['edit', 'stage', 'record', 'ai', 'voice'].includes(view) && scripts.find((s) => s.id === id)) {
     state.view = view; state.scriptId = id;
     if (view !== 'edit') { state.idx = clamp(state.idx, 0, current().sentences.length - 1); state.progress = 0; state.startedAt = 0; }
     await loadRecs(id);
@@ -893,6 +872,7 @@ function render() {
   else if (state.view === 'edit') renderEditor();
   else if (state.view === 'record') renderRecord();
   else if (state.view === 'ai') renderAI();
+  else if (state.view === 'voice') renderVoice();
   else if (state.view === 'diag') renderDiag();
   else if (state.view === 'setup') renderWizard();
   else renderStage();
@@ -927,10 +907,13 @@ function renderHome() {
           <div class="formats">TXT · MD · DOCX</div>
         </label>
         <textarea class="field" id="paste" rows="4" placeholder="또는 대본을 여기에 붙여넣기"></textarea>
-        <div class="row">
-          <button class="btn grow" id="fromPaste">붙여넣은 대본 추가</button>
-          <button class="btn ghost" id="sample">샘플 대본</button>
+        <div class="grid2">
+          <button class="tile" role="switch" id="swPolish" aria-checked="${!!settings.polish}"><span class="t">AI로 다듬기<br><small>발표용 구어체로 짧게 정리</small></span><span class="v">${settings.polish ? 'ON' : 'OFF'}</span></button>
+          <button class="tile" id="claudeTile"><span class="t">Claude 연결<br><small>${claude.key() ? 'API 키 저장됨' : '다듬기에 필요한 키'}</small></span><span class="v" style="font-size:24px">${claude.key() ? '✓' : '+'}</span></button>
         </div>
+        <div class="row" id="claudeBox" hidden><input class="field grow" id="claudeKey" type="password" autocomplete="off" placeholder="Anthropic API 키 (sk-ant-…)" aria-label="Claude API 키"><button class="btn" id="claudeSave">저장</button></div>
+        <button class="btn lamp" id="fromPaste" style="height:60px;border-radius:var(--r)">대본 추가</button>
+        <div class="row center-row"><button class="btn ghost small" id="sample">샘플 대본으로 시작</button></div>
         <p class="hint">대본은 이 기기 안에만 저장됩니다. 한 번 불러온 뒤에는 인터넷 없이도 발표 화면을 쓸 수 있습니다. <a class="plain-link" href="https://orrket-2025.github.io/earcue/privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a></p>
       </section>
     </main>`;
@@ -942,6 +925,9 @@ function renderHome() {
   drop.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) importFile(f); });
   $('#fromPaste').onclick = () => { const t = $('#paste').value.trim(); if (!t) { toast('붙여넣은 내용이 없습니다'); return; } addScript(t.split('\n')[0].slice(0, 40), t); };
   $('#sample').onclick = () => addScript(SAMPLE_TITLE, SAMPLE_TEXT);
+  $('#swPolish').onclick = () => { if (!settings.polish && !claude.key()) { $('#claudeBox').hidden = false; $('#claudeKey').focus(); toast('먼저 Claude API 키를 넣어 주세요'); return; } settings.polish = !settings.polish; saveSettings(); $('#swPolish').setAttribute('aria-checked', settings.polish); $('#swPolish .v').textContent = settings.polish ? 'ON' : 'OFF'; };
+  $('#claudeTile').onclick = () => { const b = $('#claudeBox'); b.hidden = !b.hidden; if (!b.hidden) $('#claudeKey').focus(); };
+  $('#claudeSave').onclick = () => { const v = $('#claudeKey').value.trim(); if (!v) { toast('키를 입력해 주세요'); return; } claude.setKey(v); toast('저장했습니다'); render(); };
   const inst = $('#install'); if (inst) inst.onclick = async () => { const p = state.installPrompt; if (!p) return; p.prompt(); await p.userChoice; state.installPrompt = null; render(); };
 }
 
@@ -952,6 +938,7 @@ function addScript(title, text) {
   scripts.push(s); saveScripts();
   toast(`${sentences.length}개 문장으로 나눴습니다`);
   go('/edit/' + s.id);
+  if (settings.polish && claude.key()) polishScript(s);
 }
 
 async function importFile(f) {
@@ -982,16 +969,12 @@ function renderEditor() {
           <button class="btn small" id="add">${ICON.plus}문장 추가</button>
         </div>
       </div>
-      <button class="rec-entry" id="toRecord">
-        <i class="led ${recs.size ? 'next' : ''}"></i>
-        <span class="grow"><span class="t">내 목소리 녹음</span><small id="recSummary">${recs.size ? `${recs.size}/${s.sentences.length}문장 녹음됨 · 발표 때 내 목소리로 들려줍니다` : '문장을 하나씩 직접 읽어 녹음하면 발표 때 내 목소리로 들려줍니다'}</small></span>
+      <button class="rec-entry" id="toVoice">
+        <i class="led ${aiCount(s) ? 'lamp' : recs.has('sample:' + s.id) ? 'next' : ''}"></i>
+        <span class="grow"><span class="t">내 목소리</span><small>${voiceSummary(s)}</small></span>
         ${ICON.mic}
       </button>
-      <button class="rec-entry" id="toAI">
-        <i class="led ${aiCount(s) ? 'lamp' : ''}"></i>
-        <span class="grow"><span class="t">AI 목소리로 만들기</span><small>${aiEntrySummary(s)}</small></span>
-        ${ICON.spark}
-      </button>
+      ${s.original ? `<div class="row between"><span class="hint">AI가 다듬은 대본입니다.</span><button class="btn small ghost" id="restoreOrig">원본으로 되돌리기</button></div>` : ''}
       <div class="sent-list" id="list"></div>
       <p class="hint">문장을 누르면 도구가 나타납니다. 커서를 둔 자리에서 나누거나, 다음 문장과 합칠 수 있습니다. 스피커 버튼으로 미리 들어 보세요. 문장을 나누거나 합치면 그 문장의 녹음은 지워지므로 다시 녹음해 주세요.</p>
       <div class="row between">
@@ -1001,8 +984,8 @@ function renderEditor() {
     </main>`;
   $('#back').onclick = () => go('/');
   $('#toStage').onclick = $('#toStage2').onclick = () => { state.idx = 0; go('/stage/' + s.id); };
-  $('#toAI').onclick = () => go('/ai/' + s.id);
-  $('#toRecord').onclick = () => { state.idx = Math.max(0, s.sentences.findIndex((x) => !recs.has(x.id))); if (state.idx < 0) state.idx = 0; go('/record/' + s.id); };
+  $('#toVoice').onclick = () => go('/voice/' + s.id);
+  const ro = $('#restoreOrig'); if (ro) ro.onclick = async () => { if (!confirm('AI가 다듬기 전 원본 대본으로 되돌릴까요? 생성한 음성은 지워집니다.')) return; await removeAllRecs(s.id); s.sentences = mkSentences(s.original); delete s.original; s.polished = false; s.recCount = 0; touch(); renderEditor(); };
   $('#title').oninput = (e) => { s.title = e.target.value; touch(); };
   $('#add').onclick = () => { s.sentences.push({ id: uid(), text: '' }); touch(); renderList(); focusSentence(s.sentences.length - 1); };
   $('#resplit').onclick = async () => { if (!confirm('모든 문장을 합친 뒤 자동으로 다시 나눕니다. 직접 수정한 구분과 녹음은 모두 사라집니다. 계속할까요?')) return; await removeAllRecs(s.id); s.sentences = mkSentences(splitSentences(s.sentences.map((x) => x.text).join('\n'))); s.recCount = 0; touch(); renderList(); };
@@ -1018,7 +1001,6 @@ function renderEditor() {
         <textarea rows="1" placeholder="문장을 입력">${esc(x.text)}</textarea>
         <div class="tools">
           <button class="btn small" data-act="say">${ICON.speaker}듣기</button>
-          <button class="btn small" data-act="rec">${ICON.mic}${recs.has(x.id) ? '다시 녹음' : '녹음'}</button>
           <button class="btn small" data-act="split">${ICON.split}커서에서 나누기</button>
           <button class="btn small" data-act="merge" ${i === s.sentences.length - 1 ? 'disabled' : ''}>${ICON.merge}다음과 합치기</button>
           <button class="btn small ghost danger" data-act="del">${ICON.trash}</button>
@@ -1063,6 +1045,12 @@ function ledFor(x) {
   return '<i class="led next tiny" title="내 목소리 녹음 있음"></i>';
 }
 const aiCount = (s) => s.sentences.filter((x) => { const r = recs.get(x.id); return r && r.kind === 'ai'; }).length;
+function voiceSummary(s) {
+  const sample = recs.get('sample:' + s.id); const n = aiCount(s);
+  if (n) return `${settings.elVoiceName || 'AI 목소리'} · ${n}/${s.sentences.length}문장 생성됨`;
+  if (sample) return `샘플 ${fmtSec(sample.duration)} 녹음됨 · 이제 내 목소리를 만들 수 있습니다`;
+  return '대본을 한 번 읽어 녹음하면 내 목소리로 전체를 만들 수 있습니다';
+}
 function aiEntrySummary(s) {
   if (!eleven.key()) return 'ElevenLabs 계정을 연결하면 녹음 없이도 내 목소리로 전체 대본을 만들 수 있습니다';
   const n = aiCount(s); const plan = aiPlan(s);
@@ -1250,6 +1238,103 @@ function renderDiag() {
   window.addEventListener('contextmenu', (e) => diagLog('contextmenu (길게 누름)'), true);
 })();
 
+/* ---- voice: one continuous sample recording, cloned voice, delivery style, generation ---- */
+function renderVoice() {
+  const s = current(); const hasKey = !!eleven.key(); const plan = aiPlan(s); const sample = recs.get('sample:' + s.id); const on = state.recording;
+  const st = styleOf();
+  const sliders = [['speed', '속도', 0.7, 1.2, 0.01, (v) => v.toFixed(2) + '×'], ['pause', '쉼', 0, 1.5, 0.05, (v) => v.toFixed(2) + 's'], ['style', '강조', 0, 1, 0.05, (v) => Math.round(v * 100) + '%'], ['stability', '안정감', 0, 1, 0.05, (v) => Math.round(v * 100) + '%']];
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: '' })}
+    <main class="view">
+      <h2>1 · 목소리 샘플</h2>
+      <div class="panel stack">
+        <div class="big-timer" id="recTime">${on ? '00:00' : sample ? fmtTime(sample.duration) : '00:00'}</div>
+        <p class="hint center" style="padding-top:0">${on ? '아래 대본을 평소 발표하듯 읽어 내려가세요. 1분 이상이면 충분합니다.' : sample ? `샘플 ${fmtSec(sample.duration)} 저장됨. 다시 녹음하면 대체됩니다.` : '녹음을 누르고 대본을 처음부터 읽어 주세요. 문장별로 끊지 않고 한 번에 읽습니다.'}</p>
+        <div class="track" aria-hidden="true"><div class="fill" id="vu"></div></div>
+        <div class="guide" id="guide">${s.sentences.map((x) => `<p>${esc(x.text)}</p>`).join('')}</div>
+        <div class="row">
+          <button class="btn ${on ? 'rec-on' : 'lamp'} grow" id="recToggle" style="height:56px">${on ? ICON.stop + '정지하고 저장' : ICON.rec + (sample ? '다시 녹음' : '녹음 시작')}</button>
+          <button class="btn icon" id="recPlay" ${sample && !on ? '' : 'disabled'} aria-label="들어보기">${ICON.play}</button>
+          <button class="btn icon ghost danger" id="recDel" ${sample && !on ? '' : 'disabled'} aria-label="삭제">${ICON.trash}</button>
+        </div>
+      </div>
+
+      <h2>2 · ElevenLabs</h2>
+      <div class="panel stack">
+        <div class="row"><input class="field grow" id="elKey" type="password" autocomplete="off" placeholder="${hasKey ? '저장된 키 사용 중 · 바꾸려면 새 키' : 'ElevenLabs API 키'}" aria-label="ElevenLabs API 키"><button class="btn" id="elSave">저장</button></div>
+        <div class="status" id="elStatus"><span class="chip"><i class="led ${hasKey ? 'lamp' : ''}"></i>${hasKey ? '연결 확인 중…' : '키가 없습니다'}</span></div>
+        <div class="select-wrap" ${hasKey ? '' : 'hidden'}><select class="field" id="elVoice" aria-label="목소리 선택"><option value="">${settings.elVoiceName ? esc(settings.elVoiceName) : '불러오는 중…'}</option></select></div>
+        <button class="btn" id="cloneBtn" ${hasKey && sample && sample.duration >= 30000 ? '' : 'disabled'} ${hasKey ? '' : 'hidden'}>${ICON.spark}샘플로 내 목소리 만들기</button>
+        <p class="hint" ${hasKey ? '' : 'hidden'}>${sample ? (sample.duration >= 30000 ? '샘플이 잡음 없이 또렷할수록 결과가 좋습니다.' : '샘플이 30초보다 짧습니다. 더 길게 녹음해 주세요.') : '위에서 샘플을 먼저 녹음하세요.'}</p>
+      </div>
+
+      <h2>3 · 말투</h2>
+      <div class="panel stack">
+        <div class="seg presets" role="radiogroup">${Object.entries(PROFILES).map(([k, p]) => `<button role="radio" aria-checked="${settings.elProfile === k}" data-profile="${k}"><b>${p.label}</b><small>${p.desc}</small></button>`).join('')}</div>
+        <p class="hint" id="profileNote">${PROFILES[settings.elProfile] ? PROFILES[settings.elProfile].analysis : '슬라이더로 직접 조절한 말투'}</p>
+        ${sliders.map(([k, l, mn, mx, stp, fmt]) => `<div class="slider-row"><span class="l">${l}</span><input class="range" type="range" min="${mn}" max="${mx}" step="${stp}" value="${st[k]}" data-style="${k}" style="--pct:${Math.round((st[k] - mn) / (mx - mn) * 100)}%" aria-label="${l}"><span class="v" id="sv-${k}">${fmt(st[k])}</span></div>`).join('')}
+        <p class="hint">특정 인물의 목소리를 흉내 내지 않습니다. 말의 속도·쉼·강조·안정감만 내 목소리에 입힙니다.</p>
+      </div>
+
+      <h2>4 · 문장 음성 만들기</h2>
+      <div class="panel stack">
+        <div class="ai-summary"><span><b>${plan.fresh.length}</b> 최신</span><span><b>${plan.stale.length}</b> 다시 생성</span><span><b>${plan.missing.length}</b> 없음</span></div>
+        <div class="track" aria-hidden="true"><div class="fill" id="aiFill" style="width:${aiJob.total ? aiJob.done / aiJob.total * 100 : 0}%"></div></div>
+        <div class="row between"><span class="hint" id="aiNote">${aiJob.running ? aiJob.note : `글자 ${plan.chars.toLocaleString()} · 약 ${plan.chars.toLocaleString()} 크레딧`}</span><button class="btn small" id="aiPreview" ${settings.elVoiceId ? '' : 'disabled'}>${ICON.play}첫 문장 미리 듣기</button></div>
+        <button class="btn lamp" id="aiGen" style="height:60px;border-radius:var(--r)" ${settings.elVoiceId && !aiJob.running && (plan.stale.length + plan.missing.length) ? '' : 'disabled'}>${ICON.spark}${aiJob.running ? `생성 중 ${aiJob.done}/${aiJob.total}` : `${plan.stale.length + plan.missing.length}문장 생성`}</button>
+        ${aiJob.running ? '<button class="btn small ghost" id="aiCancel">중단</button>' : ''}
+      </div>
+    </main>`;
+  $('#back').onclick = () => go('/edit/' + s.id);
+  // sample recording
+  recorder.onLevel = (lv) => { const v = $('#vu'); if (v && state.recording) v.style.width = Math.round(lv * 100) + '%'; };
+  $('#recToggle').onclick = async () => {
+    if (state.recording) {
+      const take = await recorder.stop(); state.recording = false;
+      if (take) { if (await saveRec(s, 'sample:' + s.id, take, { kind: 'sample' })) toast(`샘플 ${fmtSec(take.duration)} 저장했습니다`); } else toast('너무 짧아서 저장하지 않았습니다');
+      renderVoice(); return;
+    }
+    stopVoice();
+    if (await recorder.start()) { state.recording = true; renderVoice(); tickRecTime(); }
+  };
+  $('#recPlay').onclick = () => { const r = recs.get('sample:' + s.id); if (r) recPlayer.play(r, { onProgress: (p) => { const v = $('#vu'); if (v) v.style.width = (p * 100) + '%'; }, onEnd: () => { const v = $('#vu'); if (v) v.style.width = '0%'; } }); };
+  $('#recDel').onclick = async () => { await removeRec(s, 'sample:' + s.id); renderVoice(); };
+  // elevenlabs
+  $('#elSave').onclick = () => { const v = $('#elKey').value.trim(); if (!v) { toast('키를 입력해 주세요'); return; } eleven.setKey(v); $('#elKey').value = ''; toast('저장했습니다'); renderVoice(); };
+  $('#elKey').onkeydown = (e) => { if (e.key === 'Enter') $('#elSave').click(); };
+  app.querySelectorAll('[data-profile]').forEach((b) => b.onclick = () => { settings.elProfile = b.dataset.profile; settings.elStyle = { ...PROFILES[b.dataset.profile].v }; saveSettings(); renderVoice(); });
+  app.querySelectorAll('[data-style]').forEach((inp) => inp.oninput = () => { const k = inp.dataset.style; settings.elStyle = { ...styleOf(), [k]: parseFloat(inp.value) }; settings.elProfile = ''; saveSettings(); const [, , mn, mx, , fmt] = sliders.find((x) => x[0] === k); inp.style.setProperty('--pct', Math.round((inp.value - mn) / (mx - mn) * 100) + '%'); $('#sv-' + k).textContent = fmt(parseFloat(inp.value)); app.querySelectorAll('[data-profile]').forEach((b) => b.setAttribute('aria-checked', 'false')); $('#profileNote').textContent = '슬라이더로 직접 조절한 말투'; });
+  if (!hasKey) return;
+  const setStatus = (html) => { const el = $('#elStatus'); if (el) el.innerHTML = html; };
+  eleven.subscription().then((sub) => { const used = sub.character_count || 0, lim = sub.character_limit || 0; setStatus(`<span class="chip on"><i class="led next"></i>연결됨 · ${esc(sub.tier || '')}</span><span class="chip">남은 크레딧 ${(lim - used).toLocaleString()}</span>`); }).catch((e) => setStatus(`<span class="chip warn"><i class="led now"></i>${esc(e.message)}</span>`));
+  const fillVoices = () => eleven.voices().then((list) => {
+    const sel = $('#elVoice'); if (!sel) return;
+    const mine = list.filter((v) => v.category !== 'premade'), pre = list.filter((v) => v.category === 'premade');
+    const opt = (v) => `<option value="${esc(v.voice_id)}" data-name="${esc(v.name)}" ${v.voice_id === settings.elVoiceId ? 'selected' : ''}>${esc(v.name)}${v.category && v.category !== 'premade' ? ` (${esc(v.category)})` : ''}</option>`;
+    sel.innerHTML = `<option value="">목소리 선택</option>${mine.length ? '<optgroup label="내 목소리">' + mine.map(opt).join('') + '</optgroup>' : ''}<optgroup label="기본 제공">${pre.map(opt).join('')}</optgroup>`;
+  }).catch((e) => { const sel = $('#elVoice'); if (sel) sel.innerHTML = '<option value="">목록을 불러올 수 없습니다</option>'; toast(e.message); });
+  fillVoices();
+  $('#elVoice').onchange = (e) => { const o = e.target.selectedOptions[0]; settings.elVoiceId = e.target.value; settings.elVoiceName = o ? (o.dataset.name || '') : ''; saveSettings(); renderVoice(); };
+  $('#cloneBtn').onclick = async () => {
+    const r = recs.get('sample:' + s.id); if (!r) return;
+    const name = (s.title || '내 목소리').slice(0, 30) + ' 목소리';
+    const btn = $('#cloneBtn'); btn.disabled = true; btn.textContent = '준비 중…';
+    try { const files = await mergeSamples([r.blob], (t) => { btn.textContent = t; }); btn.textContent = '업로드 중…'; const out = await eleven.clone(name, files); settings.elVoiceId = out.voice_id; settings.elVoiceName = name; saveSettings(); toast(`"${name}"를 만들었습니다`); renderVoice(); }
+    catch (e) { toast(e.message); renderVoice(); }
+  };
+  $('#aiPreview').onclick = async () => {
+    const x = s.sentences.find((y) => y.text.trim()); if (!x) return; const b = $('#aiPreview'); b.disabled = true;
+    try { const blob = await eleven.speak(settings.elVoiceId, x.text.trim(), styleOf(), { next: (s.sentences[1] || {}).text }); const dur = await blobDuration(blob, 3000); recPlayer.play({ blob, duration: dur }, { onEnd: () => { b.disabled = false; } }); }
+    catch (e) { toast(e.message); b.disabled = false; }
+  };
+  $('#aiGen').onclick = async () => {
+    const tick = () => { if (state.view !== 'voice') return; const f = $('#aiFill'), n = $('#aiNote'), g = $('#aiGen'); if (f) f.style.width = (aiJob.total ? aiJob.done / aiJob.total * 100 : 0) + '%'; if (n) n.textContent = aiJob.running ? `${aiJob.note} · ${aiJob.done}/${aiJob.total}` : ''; if (g) g.innerHTML = ICON.spark + (aiJob.running ? `생성 중 ${aiJob.done}/${aiJob.total}` : '완료'); };
+    try { aiJob.running = true; aiJob.done = 0; aiJob.total = plan.stale.length + plan.missing.length; renderVoice(); const c = $('#aiCancel'); if (c) c.onclick = () => { aiJob.cancel = true; }; await generateAll(s, tick); toast(aiJob.cancel ? `중단했습니다 (${aiJob.done}문장 저장됨)` : `${aiJob.done}문장을 내 목소리로 만들었습니다`); }
+    catch (e) { aiJob.running = false; toast(e.message); }
+    renderVoice();
+  };
+}
+
 /* ---- stage ---- */
 function applyFontSize() { document.documentElement.style.setProperty('--script-size', clamp(settings.fontSize || 18, 12, 40) + 'px'); }
 function renderStage() {
@@ -1277,19 +1362,14 @@ function renderStage() {
         <button class="btn lamp" id="next" aria-label="다음 문장 읽기">다음${ICON.next}</button>
       </div>
       <div class="deck">
-        <div class="knob-wrap">
-          <div class="knob" id="knob" role="slider" aria-label="읽기 속도" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${settings.rate}" tabindex="0">
-            <div class="ticks">${KNOB_TICKS.map((r) => `<i class="${Number.isInteger(r * 2) ? 'major' : ''}" style="transform:rotate(${rateToAngle(r)}deg)"></i>`).join('')}</div>
-            <div class="labels">${[1, 1.5, 2, 3, 5].map((r) => `<span style="transform:rotate(${rateToAngle(r)}deg)"><b style="transform:rotate(${-rateToAngle(r)}deg)">${r}</b></span>`).join('')}</div>
-            <div class="cap" id="cap"></div>
-          </div>
-          <div class="knob-readout"><button class="btn" id="rateDown" aria-label="느리게">−</button><span class="val" id="rateVal"></span><button class="btn" id="rateUp" aria-label="빠르게">+</button></div>
-          <div class="knob-label">속도 · 2×까지 0.05씩</div>
+        <div class="speed">
+          <div class="top"><span>읽기 속도</span><span>1× ~ 5×</span></div>
+          <div class="val"><span id="rateVal">1.30</span><small>×</small></div>
+          <input class="range" id="rateRange" type="range" min="0" max="1000" value="0" aria-label="읽기 속도">
+          <div class="ticks"><span>1×</span><span>1.5×</span><span>2×</span><span>3×</span><span>5×</span></div>
         </div>
-        <div class="switches">
-          <button class="switch" role="switch" id="swAuto" aria-checked="${settings.auto}"><span class="label"><span>자동 진행</span><small>말 끝나기 <b class="mono" id="leadLbl">${settings.lead}</b>초 전에 다음</small></span><span class="rocker"></span></button>
-          <button class="switch" role="switch" id="swListen" aria-checked="${settings.listen}"><span class="label"><span>말 인식</span><small>문장을 말하면 다음으로</small></span><span class="rocker"></span></button>
-        </div>
+        <button class="tile" role="switch" id="swAuto" aria-checked="${settings.auto}"><span class="t">타이머 자동 진행<br><small>말 끝나기 <b id="leadLbl">${settings.lead}</b>초 전</small></span><span class="v">${settings.auto ? 'ON' : 'OFF'}</span></button>
+        <button class="tile" role="switch" id="swListen" aria-checked="${settings.listen}"><span class="t">말 인식 진행<br><small>다 말하면 다음으로</small></span><span class="v">${settings.listen ? 'ON' : 'OFF'}</span></button>
       </div>
       <div class="remote-line"><span>리모컨</span>${keyHints()}</div>
     </main>
@@ -1301,9 +1381,7 @@ function renderStage() {
   $('#prev').onclick = () => act('prev');
   $('#play').onclick = () => act('play');
   $('#next').onclick = () => act('next');
-  $('#rateDown').onclick = () => nudgeRate(-1);
-  $('#rateUp').onclick = () => nudgeRate(1);
-  $('#swAuto').onclick = () => { settings.auto = !settings.auto; saveSettings(); $('#swAuto').setAttribute('aria-checked', settings.auto); if (!settings.auto) cancelAuto(); renderStageStatus(); };
+  $('#swAuto').onclick = () => { settings.auto = !settings.auto; saveSettings(); tileSet('#swAuto', settings.auto); if (!settings.auto) cancelAuto(); renderStageStatus(); };
   $('#swListen').onclick = () => toggleListen();
   bindKnob();
   setRate(settings.rate, true);
@@ -1350,7 +1428,7 @@ function renderStageStatus() {
   const sp = isSpeaking();
   chips.push(`<span class="chip ${sp ? 'on' : ''}"><i class="led ${sp ? 'lamp' : ''}"></i>${sp ? (state.usingRec === 'ai' ? 'AI 내 목소리' : state.usingRec ? '내 목소리' : '읽는 중') : '대기'}</span>`);
   if (state.recMissing) chips.push(`<span class="chip"><i class="led"></i>녹음 없음 · 기기 음성</span>`);
-  if (settings.auto) chips.push(`<span class="chip on" id="autoChip"><i class="led lamp ${state.autoDue ? 'blink' : ''}"></i>자동 <span id="autoCount">${state.autoDue ? ((state.autoDue - performance.now()) / 1000).toFixed(1) + 's' : settings.lead + 's'}</span></span>`);
+  if (settings.auto) chips.push(`<span class="chip on" id="autoChip"><i class="led lamp ${state.autoDue ? 'blink' : ''}"></i>타이머 <span id="autoCount">${state.autoDue ? ((state.autoDue - performance.now()) / 1000).toFixed(1) + 's' : settings.lead + 's'}</span></span>`);
   if (settings.listen) chips.push(`<span class="chip on"><i class="led ${listener.on && !listener.suspended ? 'next' : ''}"></i>말 인식 ${!listener.on ? '꺼짐' : listener.suspended ? '대기' : '듣는 중'}</span>`);
   if (media.ready) chips.push(`<span class="chip"><i class="led lamp"></i>미디어 키 대기</span>`);
   if (state.lastSignal) chips.push(`<span class="chip on"><i class="led next"></i>${esc(state.lastSignal)}</span>`);
@@ -1387,6 +1465,7 @@ function speakCurrent() {
     onEnd: ({ cancelled, dur, rate }) => {
       if (cancelled) { if (tts.lastError && tts.lastError !== 'canceled') { state.ttsNote = '읽기 중단: ' + tts.lastError; renderStageStatus(); } return; }
       state.ttsNote = tts.lastError ? '읽기 오류: ' + tts.lastError : '';
+      state.ttsEndAt = performance.now(); state.naturalMs = dur * rate; state.spoken = 0;
       setProgress(1); listener.resume(); renderStageStatus();
       if (settings.auto && state.idx < s.sentences.length - 1) scheduleAuto(dur, rate);
     },
@@ -1448,7 +1527,7 @@ function renderRecord() {
   tickRecTime();
 }
 function tickRecTime() {
-  if (state.view !== 'record') return;
+  if (state.view !== 'record' && state.view !== 'voice') return;
   if (state.recording) { const el = $('#recTime'); if (el) el.textContent = fmtTime(performance.now() - recorder.t0); }
   setTimeout(tickRecTime, 200);
 }
@@ -1494,14 +1573,35 @@ function toggleListen(force) {
     else { settings.listen = true; listener.onMatch = onHeard; if (force !== true) toast('마이크로 발표자의 말을 듣습니다'); }
   } else { listener.stop(); settings.listen = false; }
   saveSettings();
-  const sw = $('#swListen'); if (sw) sw.setAttribute('aria-checked', settings.listen);
+  tileSet('#swListen', settings.listen);
   renderStageStatus();
+}
+function tileSet(sel, on) { const el = $(sel); if (!el) return; el.setAttribute('aria-checked', !!on); const v = el.querySelector('.v'); if (v) v.textContent = on ? 'ON' : 'OFF'; }
+/* How much of the current sentence has been said: share of its bigrams heard, in order. Drives the
+   spoken highlight and, together with the tail match and a minimum speaking time, the advance decision. */
+function coverage(sentence, heard) {
+  const sN = normalize(sentence), h = normalize(heard); if (sN.length < 2 || !h) return 0;
+  const bg = bigrams(sN); let hit = 0, from = 0;
+  for (const b of bg) { const i = h.indexOf(b, from); if (i >= 0) { hit++; from = i; } }
+  return hit / bg.length;
 }
 function onHeard(heard) {
   const s = current(); if (!s || state.view !== 'stage') return;
   if (isSpeaking()) return;
-  const score = tailMatch(s.sentences[state.idx].text, heard);
-  if (score >= 0.7) { listener.heard = ''; act('next'); }
+  const text = s.sentences[state.idx].text;
+  const cov = coverage(text, heard); state.spoken = cov;
+  renderSpoken(cov);
+  const sinceRead = performance.now() - (state.ttsEndAt || 0);
+  const natural = state.naturalMs || (text.length / 5.5 * 1000);
+  // never advance on echo of the earpiece itself: the presenter needs real time to say the sentence
+  if (sinceRead < Math.max(900, natural * 0.45)) return;
+  if (cov >= 0.6 && tailMatch(text, heard) >= 0.7) { listener.heard = ''; state.spoken = 0; act('next'); }
+}
+function renderSpoken(cov) {
+  const el = $('.ly.now .text'); if (!el) return;
+  const text = current().sentences[state.idx].text; const n = Math.round(clamp(cov, 0, 1) * text.length);
+  el.innerHTML = n > 0 ? `<span class="said">${esc(text.slice(0, n))}</span>${esc(text.slice(n))}` : esc(text);
+  if (!isSpeaking()) setProgress(clamp(cov, 0, 1));
 }
 
 /* rate knob */
@@ -1515,24 +1615,15 @@ function snapRate(r) { const step = r <= 2 ? 0.05 : 0.25; return Math.round(clam
 function nudgeRate(dir) { const r = settings.rate; const step = (dir > 0 ? r < 2 : r <= 2) ? 0.05 : 0.25; setRate(snapRate(r + dir * step)); }
 function setRate(r, silent) {
   settings.rate = Math.round(clamp(r, 1, 5) * 100) / 100; saveSettings();
-  const cap = $('#cap'), val = $('#rateVal'), knob = $('#knob'); if (!cap) return;
-  cap.style.transform = `rotate(${rateToAngle(settings.rate)}deg)`;
-  val.textContent = settings.rate.toFixed(2) + '×';
-  knob.setAttribute('aria-valuenow', settings.rate);
-  if (!silent && tts.utter) { /* rate changes apply from the next sentence */ }
+  const val = $('#rateVal'), rng = $('#rateRange'); if (!val) return;
+  val.textContent = settings.rate.toFixed(2);
+  if (rng) { const pos = rateToPos(settings.rate); if (!rng._drag) rng.value = Math.round(pos * 1000); rng.style.setProperty('--pct', (pos * 100).toFixed(1) + '%'); }
 }
 function bindKnob() {
-  const knob = $('#knob'); let dragging = false, lastAngle = 0;
-  const angleOf = (e) => { const r = knob.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI; };
-  knob.addEventListener('pointerdown', (e) => { dragging = true; lastAngle = angleOf(e); knob.setPointerCapture(e.pointerId); });
-  knob.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const a = angleOf(e); let d = a - lastAngle; if (d > 180) d -= 360; if (d < -180) d += 360; lastAngle = a;
-    setRate(posToRate(clamp(rateToPos(settings.rate) + d / 270, 0, 1)));
-  });
-  ['pointerup', 'pointercancel'].forEach((ev) => knob.addEventListener(ev, () => { dragging = false; setRate(snapRate(settings.rate)); }));
-  knob.addEventListener('wheel', (e) => { e.preventDefault(); nudgeRate(e.deltaY < 0 ? 1 : -1); }, { passive: false });
-  knob.addEventListener('keydown', (e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); nudgeRate(1); } if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); nudgeRate(-1); } });
+  const rng = $('#rateRange'); if (!rng) return;
+  rng.addEventListener('input', () => { rng._drag = true; setRate(posToRate(rng.value / 1000)); rng._drag = false; });
+  rng.addEventListener('change', () => { setRate(snapRate(settings.rate)); });
+  rng.addEventListener('keydown', (e) => { if (['ArrowUp', 'ArrowRight'].includes(e.key)) { e.preventDefault(); e.stopPropagation(); nudgeRate(1); } if (['ArrowDown', 'ArrowLeft'].includes(e.key)) { e.preventDefault(); e.stopPropagation(); nudgeRate(-1); } });
 }
 
 /* ---------------- settings sheet ---------------- */
@@ -1566,8 +1657,8 @@ function renderSheet() {
     <h2>화면</h2>
     <div class="setting"><div class="label">대본 글자 크기<small>발표 화면의 문장 글씨</small></div>
       <div class="stepper"><button class="btn" id="fontDown" aria-label="작게">−</button><span class="val" id="fontVal">${settings.fontSize || 18}px</span><button class="btn" id="fontUp" aria-label="크게">+</button></div></div>
-    <h2>자동 진행</h2>
-    <div class="setting"><div class="label">다음 문장 시작 시점<small>내 말이 끝나기 몇 초 전에 다음 문장을 들려줄지</small></div>
+    <h2>타이머 자동 진행</h2>
+    <div class="setting"><div class="label">다음 문장 시작 시점<small>말 인식과 별개로, 시간 추정만으로 넘길 때 몇 초 전에 시작할지</small></div>
       <div class="stepper"><button class="btn" id="leadDown">−</button><span class="val" id="leadVal">${settings.lead.toFixed(1)}s</span><button class="btn" id="leadUp">+</button></div></div>
     <p class="hint">읽어준 시간과 속도로 실제 말하는 시간을 추정합니다. 몇 문장 지나면 더 정확해집니다.</p>
     <h2>리모컨 버튼</h2>
