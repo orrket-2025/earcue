@@ -23,8 +23,6 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - run: npm ci
-      - name: App icons and splash from resources/
-        run: npx --yes @capacitor/assets generate --android --iconBackgroundColor '#0F1114' --iconBackgroundColorDark '#0F1114' --splashBackgroundColor '#2E3238' --splashBackgroundColorDark '#2E3238'
       - name: Copy web app into the Android project
         run: npx cap sync android
       - name: Build debug APK
