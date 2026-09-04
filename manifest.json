@@ -1,0 +1,16 @@
+{
+  "name": "EarCue 이어큐",
+  "short_name": "EarCue",
+  "description": "대본을 한 문장씩 이어폰으로 미리 읽어주는 발표 프롬프터",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F1114",
+  "theme_color": "#0F1114",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

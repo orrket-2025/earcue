@@ -1,0 +1,1785 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2E3238">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<!--APP-START-->
+<title>EarCue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg-hi:#3D424A; --bg-lo:#2A2E34;
+  --face:#3A3F46; --face-hi:#454A52; --face-lo:#30343A;
+  --well:#24272C; --well-deep:#1C1F23;
+  --edge-light:rgba(255,255,255,.10); --edge-dark:rgba(0,0,0,.55);
+  --text:#D9DCE1; --text-soft:#9DA2AA; --text-dim:#6F757E;
+  --lamp:#F1F3F6; --lamp-glow:rgba(241,243,246,.35);
+  --led-now:#FF5A4E; --led-next:#5FD394; --led-off:#4C5158;
+  --danger:#E0554B;
+  --sans:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --raise: inset 0 1px 0 var(--edge-light), inset 0 -1px 0 rgba(0,0,0,.35), 0 8px 18px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.5);
+  --sink: inset 0 2px 5px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.05), 0 1px 0 rgba(255,255,255,.06);
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;overscroll-behavior:none}
+body{
+  margin:0; font-family:var(--sans); color:var(--text); font-size:16px; line-height:1.5;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.07), transparent 60%),
+    linear-gradient(180deg,var(--bg-hi) 0%,var(--bg-lo) 100%) fixed;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+:focus-visible{outline:2px solid var(--lamp);outline-offset:3px;border-radius:6px}
+[hidden]{display:none!important}
+::selection{background:rgba(241,243,246,.25)}
+
+/* ---------- shell ---------- */
+.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:0 18px env(safe-area-inset-bottom)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 0 10px;min-height:64px}
+.topbar .left,.topbar .right{display:flex;align-items:center;gap:10px;min-width:0}
+.brand{display:flex;flex-direction:column;align-items:center;line-height:1;letter-spacing:.32em;text-transform:uppercase;user-select:none}
+.brand b{font-weight:600;font-size:26px;letter-spacing:.18em;text-shadow:0 1px 0 rgba(255,255,255,.12),0 -1px 0 rgba(0,0,0,.5)}
+.brand small{font-weight:300;font-size:11px;color:var(--text-soft);margin-top:6px;padding-top:6px;border-top:1px solid var(--edge-dark);box-shadow:0 1px 0 var(--edge-light) inset}
+.hero-brand{padding:38px 0 18px;text-align:center}
+.hero-brand .brand b{font-size:40px;font-weight:500}
+.hero-brand .version{margin-top:10px;font-size:10px;opacity:.7}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
+h1,h2,h3{margin:0;font-weight:500}
+h2{font-size:15px;color:var(--text-soft);letter-spacing:.02em}
+p{margin:0}
+.muted{color:var(--text-soft)}
+.dim{color:var(--text-dim)}
+.mono{font-family:var(--mono)}
+
+/* ---------- hardware primitives ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:0 18px;height:46px;border-radius:12px;font-weight:500;font-size:15px;color:var(--text);
+  background:linear-gradient(180deg,var(--face-hi),var(--face-lo));
+  box-shadow:var(--raise); text-shadow:0 1px 0 rgba(0,0,0,.4);
+  transition:transform .08s ease, box-shadow .08s ease, filter .12s ease; user-select:none; touch-action:manipulation;
+}
+.btn:hover{filter:brightness(1.06)}
+.btn:active,.btn.is-down{transform:translateY(1px);box-shadow:inset 0 2px 6px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.06)}
+.btn.lamp{color:#20242A;text-shadow:0 1px 0 rgba(255,255,255,.35);background:linear-gradient(180deg,#F6F7F9,#CFD3D9);box-shadow:var(--raise),0 0 22px var(--lamp-glow)}
+.btn.lamp:active{box-shadow:inset 0 2px 6px rgba(0,0,0,.35),0 0 12px var(--lamp-glow)}
+.btn.small{height:36px;padding:0 13px;font-size:13px;border-radius:10px}
+.btn.icon{width:46px;padding:0}
+.btn.icon.small{width:36px}
+.btn.ghost{background:none;box-shadow:none;color:var(--text-soft)}
+.btn.ghost:hover{color:var(--text);filter:none}
+.btn.ghost:active{box-shadow:none;transform:none;color:var(--text-dim)}
+.btn.danger{color:#FFB0A9}
+.btn:disabled{opacity:.45;cursor:default;filter:none;transform:none}
+.btn svg{width:18px;height:18px;fill:currentColor;flex:none}
+
+.panel{
+  border-radius:var(--r);padding:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.08));
+  box-shadow:inset 0 1px 0 var(--edge-light),inset 0 0 0 1px rgba(0,0,0,.25),0 10px 24px rgba(0,0,0,.28);
+}
+.well{
+  border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));
+  box-shadow:var(--sink);
+}
+.field{width:100%;padding:12px 14px;border:0;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);color:var(--text);resize:none;line-height:1.55}
+.field::placeholder{color:var(--text-dim)}
+.field:focus{outline:0;box-shadow:var(--sink),0 0 0 2px rgba(241,243,246,.18)}
+select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-deep),var(--well)),none;padding-right:36px;position:relative}
+.select-wrap{position:relative}
+.select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:1.5px solid var(--text-soft);border-bottom:1.5px solid var(--text-soft);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+
+/* LED */
+.led{width:9px;height:9px;border-radius:50%;background:var(--led-off);box-shadow:inset 0 1px 1px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.08);flex:none}
+.led.now{background:radial-gradient(circle at 40% 35%,#FF9D95,var(--led-now) 60%);box-shadow:0 0 8px rgba(255,90,78,.75),0 0 2px rgba(255,90,78,.9)}
+.led.next{background:radial-gradient(circle at 40% 35%,#B4F0CF,var(--led-next) 60%);box-shadow:0 0 8px rgba(95,211,148,.7)}
+.led.lamp{background:radial-gradient(circle at 40% 35%,#fff,var(--lamp) 60%);box-shadow:0 0 8px var(--lamp-glow)}
+.led.blink{animation:blink .9s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+
+/* rocker switch */
+.switch{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;text-align:left;padding:12px 0;border-top:1px solid rgba(0,0,0,.3);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+.switch:first-child{border-top:0;box-shadow:none}
+.switch .label{display:flex;flex-direction:column;gap:2px;min-width:0}
+.switch .label span{font-size:15px}
+.switch .label small{font-size:12.5px;color:var(--text-soft)}
+.rocker{position:relative;flex:none;width:58px;height:34px;border-radius:9px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
+.rocker::before{content:"";position:absolute;top:3px;left:3px;width:26px;height:28px;border-radius:7px;background:linear-gradient(180deg,#5A6068,#3C4148);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.35),0 2px 4px rgba(0,0,0,.5);transition:transform .16s cubic-bezier(.3,.9,.4,1.1)}
+.rocker::after{content:"";position:absolute;right:11px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--led-off);box-shadow:inset 0 1px 1px rgba(0,0,0,.6);transition:.16s}
+.switch[aria-checked="true"] .rocker::before{transform:translateX(26px)}
+.switch[aria-checked="true"] .rocker::after{right:auto;left:11px;background:var(--lamp);box-shadow:0 0 8px var(--lamp-glow)}
+
+/* lit slider (read-through) */
+.track{position:relative;height:10px;border-radius:5px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
+.track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:linear-gradient(180deg,#FAFBFC,#C9CED6);box-shadow:0 0 12px var(--lamp-glow),inset 0 -1px 0 rgba(0,0,0,.2);width:0;transition:width .12s linear}
+.track .thumb{position:absolute;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#F7F8FA,#B9BFC8 70%);box-shadow:0 2px 5px rgba(0,0,0,.6),inset 0 -2px 3px rgba(0,0,0,.2);left:0;transition:left .12s linear}
+
+/* keycap */
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:24px;padding:0 8px;border-radius:6px;font:500 11.5px/1 var(--mono);letter-spacing:.02em;color:var(--text);background:linear-gradient(180deg,var(--face-hi),var(--face-lo));box-shadow:inset 0 1px 0 var(--edge-light),0 2px 0 rgba(0,0,0,.45),0 3px 4px rgba(0,0,0,.3);vertical-align:middle}
+.key.lit{color:#20242A;background:linear-gradient(180deg,#F6F7F9,#CFD3D9);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 0 rgba(0,0,0,.45),0 0 12px var(--lamp-glow)}
+.key.x{padding:0;min-width:22px;height:22px;color:var(--text-soft)}
+
+/* ---------- views ---------- */
+.view{flex:1;display:flex;flex-direction:column;gap:16px;padding-bottom:28px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center;gap:10px}
+.row.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+
+/* library */
+.script-list{display:flex;flex-direction:column;gap:10px}
+.script-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.06));box-shadow:inset 0 1px 0 var(--edge-light),inset 0 0 0 1px rgba(0,0,0,.25),0 6px 16px rgba(0,0,0,.25);transition:transform .08s}
+.script-card:active{transform:translateY(1px)}
+.script-card .title{font-weight:500;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.script-card .meta{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);margin-top:3px;letter-spacing:.04em}
+.script-card .go{color:var(--text-dim);flex:none}
+.empty{padding:28px 16px;text-align:center;color:var(--text-soft);font-size:14.5px;line-height:1.7}
+.drop{position:relative;border-radius:var(--r);padding:22px 16px;text-align:center;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);color:var(--text-soft);font-size:14.5px;line-height:1.7;transition:box-shadow .12s}
+.drop.over{box-shadow:var(--sink),0 0 0 2px rgba(241,243,246,.35),0 0 24px var(--lamp-glow)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop strong{display:block;color:var(--text);font-weight:500;font-size:15.5px}
+.drop .formats{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--text-dim);margin-top:6px}
+
+/* editor */
+.title-input{font-size:20px;font-weight:500;padding:12px 14px}
+.sent-list{display:flex;flex-direction:column;gap:8px;counter-reset:s}
+.sent{position:relative;display:grid;grid-template-columns:36px 1fr;gap:0 8px;padding:10px 10px 10px 6px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .12s}
+.sent.focus{box-shadow:var(--sink),0 0 0 2px rgba(241,243,246,.18)}
+.sent .num{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;padding-top:9px;letter-spacing:.02em}
+.sent textarea{grid-column:2;width:100%;border:0;background:none;padding:6px 4px;line-height:1.6;resize:none;overflow:hidden;color:var(--text);min-height:36px}
+.sent textarea:focus{outline:0}
+.sent .tools{grid-column:2;display:none;flex-wrap:wrap;gap:6px;padding:6px 0 2px}
+.sent.focus .tools{display:flex}
+.sent .len{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-left:auto;align-self:center;letter-spacing:.04em}
+.hint{font-size:13px;color:var(--text-dim);line-height:1.6}
+.plain-link{color:var(--text-soft);text-decoration:underline;text-underline-offset:3px}
+
+/* stage */
+.stage{gap:0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+.stage.swipe-mode{touch-action:none;overscroll-behavior:none}
+.stage.swipe-mode .knob{touch-action:none}
+body.swipe-lock{overflow:hidden;height:100dvh;touch-action:none;overscroll-behavior:none}
+html:has(body.swipe-lock){overflow:hidden;touch-action:none}
+body.swipe-lock .app{height:100dvh;overflow:hidden}
+body.swipe-lock .topbar{padding-top:calc(6px + env(safe-area-inset-top));min-height:48px}
+body.swipe-lock .brand b{font-size:20px}
+body.swipe-lock .brand small{display:none}
+body.swipe-lock .stage-head{padding-bottom:6px}
+body.swipe-lock .cue{padding:6px 0}
+body.swipe-lock .cue.now{padding:12px 16px 14px}
+body.swipe-lock .cue.now .text{font-size:clamp(19px,5vw,26px);min-height:2.6em}
+body.swipe-lock .cue.now .track{margin-top:10px}
+body.swipe-lock .cue.next .text{-webkit-line-clamp:2;font-size:14px}
+body.swipe-lock .transport .btn{height:52px}
+body.swipe-lock .deck{margin-top:8px;gap:10px}
+body.swipe-lock .knob{width:104px;height:104px}
+body.swipe-lock .knob .ticks i{transform-origin:50% 46px;top:4px;height:6px}
+body.swipe-lock .knob .ticks i.major{height:8px}
+body.swipe-lock .knob .labels span{transform-origin:50% 66px;top:-14px}
+body.swipe-lock .knob .cap{inset:16px}
+body.swipe-lock .knob-wrap{padding-top:12px;gap:2px}
+body.swipe-lock .knob-readout .val{font-size:17px}
+body.swipe-lock .knob-label{display:none}
+body.swipe-lock .deck .switch{padding:6px 0}
+body.swipe-lock .deck .switch .label small{display:none}
+body.swipe-lock .remote-line{display:none}
+body.swipe-lock .status{min-height:20px;padding:2px 2px}
+.stage-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:13px;color:var(--text-soft);padding:4px 0 14px;letter-spacing:.06em}
+.stage-head .counter{font-size:22px;color:var(--text);letter-spacing:.08em}
+.stage-head .counter small{font-size:13px;color:var(--text-dim);margin-left:4px}
+.cue{display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.cue .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
+.cue .text{color:var(--text-soft);font-size:15px;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}
+.cue.prev .text{color:var(--text-dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cue.now{padding:16px 18px 18px;border-radius:var(--r);background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
+.cue.now .tag{color:var(--text-soft)}
+.cue.now .text{color:var(--lamp);font-size:clamp(21px,5.6vw,30px);font-weight:400;line-height:1.5;text-shadow:0 0 18px rgba(241,243,246,.18);min-height:2.9em}
+.cue.now .track{margin-top:16px}
+.cue.next .text{color:var(--text);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cue.next .tag{color:var(--led-next)}
+.status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--text-dim);min-height:24px;padding:6px 2px}
+.status .chip{display:inline-flex;align-items:center;gap:7px;letter-spacing:.04em}
+.status .chip.on{color:var(--text)}
+.status .chip.warn{color:#FFB0A9}
+.transport{display:grid;grid-template-columns:1fr 1fr 1.35fr;margin-top:8px;border-radius:14px;padding:3px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
+.transport .btn{border-radius:11px;height:62px;font-size:15.5px;padding:0 6px;white-space:nowrap;gap:6px;box-shadow:inset 0 1px 0 var(--edge-light),inset 0 -1px 0 rgba(0,0,0,.35),0 3px 8px rgba(0,0,0,.35)}
+.transport .btn:active,.transport .btn.is-down{box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.transport .btn svg{width:22px;height:22px}
+.transport .btn + .btn{margin-left:3px}
+
+/* scrolling script */
+:root{--neon:#5CFF9D}
+.lyrics{position:relative;height:min(64vh,540px);border-radius:var(--r);overflow:hidden;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .25s}
+.lyrics.speaking{box-shadow:var(--sink),0 0 0 1px rgba(92,255,157,.25),0 0 28px rgba(92,255,157,.12)}
+.ly-list{position:absolute;inset:0;padding:0 18px 64px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%);mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%)}
+.ly-list::-webkit-scrollbar{display:none}
+.ly-pad{height:42%}
+.ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:8px 0;transition:color .3s ease}
+.ly .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;letter-spacing:.04em}
+.ly .text{font-size:var(--script-size,18px);line-height:1.55;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;transition:color .3s ease}
+.ly.before .text{color:var(--text-dim)}
+.ly.now .n{color:var(--neon)}
+.ly.now .text{color:var(--neon);font-weight:500;text-shadow:0 0 14px rgba(92,255,157,.35)}
+.ly-foot{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 14px;background:linear-gradient(180deg,rgba(28,31,35,0),rgba(30,33,38,.96) 45%)}
+.ly-foot .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px}
+.ly-foot .tag .n{margin-left:auto;color:var(--text-dim);letter-spacing:.04em}
+body.swipe-lock .lyrics{height:max(280px,calc(100dvh - 430px))}
+body.swipe-lock .ly-list{touch-action:none}
+body.swipe-lock .ly{padding:6px 0}
+
+/* knob */
+.deck{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;margin-top:18px}
+.knob-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;user-select:none}
+.knob{position:relative;width:148px;height:148px;border-radius:50%;touch-action:none;cursor:grab;
+  background:radial-gradient(circle at 50% 30%,#4C525A,#2B2F35 75%);
+  box-shadow:inset 0 2px 4px rgba(255,255,255,.12),inset 0 -6px 10px rgba(0,0,0,.55),0 14px 28px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.4)}
+.knob:active{cursor:grabbing}
+.knob .ticks{position:absolute;inset:0;border-radius:50%}
+.knob .ticks i{position:absolute;left:50%;top:6px;width:2px;height:8px;margin-left:-1px;background:var(--text-dim);border-radius:1px;transform-origin:50% 68px}
+.knob .ticks i.major{height:11px;background:var(--text-soft)}
+.knob .labels{position:absolute;inset:0;border-radius:50%;pointer-events:none}
+.knob .labels span{position:absolute;left:50%;top:-16px;width:24px;height:16px;margin-left:-12px;transform-origin:50% 90px;display:flex;justify-content:center}
+.knob .labels b{font:400 10px/1 var(--mono);color:var(--text-dim);letter-spacing:.02em}
+.knob-wrap{padding-top:16px}
+.knob .cap{position:absolute;inset:22px;border-radius:50%;
+  background:radial-gradient(circle at 50% 28%,#4A4F57,#33373D 60%,#2C3036);
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.14),inset 0 -4px 8px rgba(0,0,0,.5),0 6px 12px rgba(0,0,0,.55);
+  transition:transform .06s linear}
+.knob .cap::after{content:"";position:absolute;left:50%;top:12px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#F7F8FA,#B0B6BF 70%);box-shadow:0 0 10px var(--lamp-glow),inset 0 -1px 2px rgba(0,0,0,.35)}
+.knob-readout{display:flex;align-items:center;gap:18px;font-family:var(--mono)}
+.knob-readout .val{font-size:22px;color:var(--text);letter-spacing:.04em;min-width:60px;text-align:center}
+.knob-readout .btn{width:34px;height:30px;font-size:20px;line-height:1;color:var(--text-soft);border-radius:8px}
+.knob-label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap}
+.deck .switches{display:flex;flex-direction:column;min-width:0}
+.deck .switch{padding:10px 0}
+.remote-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);padding:16px 2px 0;line-height:2.2}
+.remote-line .key{min-width:24px;height:22px;padding:0 6px;font-size:11px}
+.remote-line .sep{opacity:.5}
+
+/* recording */
+.rec-entry{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.06));box-shadow:inset 0 1px 0 var(--edge-light),inset 0 0 0 1px rgba(0,0,0,.25),0 6px 16px rgba(0,0,0,.25);color:var(--text)}
+.rec-entry .t{display:block;font-weight:500;font-size:15.5px}
+.rec-entry small{display:block;font-size:12.5px;color:var(--text-soft);margin-top:2px}
+.rec-entry svg{width:20px;height:20px;fill:var(--text-soft);flex:none}
+.rec-entry:active{transform:translateY(1px)}
+.led.tiny{width:6px;height:6px;display:inline-block;margin-left:4px;vertical-align:middle}
+.rec-count{font-size:12px;color:var(--text-dim);letter-spacing:.06em;white-space:nowrap}
+.rec-count b{color:var(--text);font-weight:500}
+.btn.rec-on{color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.35);background:linear-gradient(180deg,#FF7B71,#D2453B);box-shadow:var(--raise),0 0 24px rgba(255,90,78,.45)}
+.btn.rec-on:active{box-shadow:inset 0 2px 6px rgba(0,0,0,.45)}
+.hint.center{text-align:center;padding:10px 6px 0}
+.center-row{justify-content:center;margin-top:14px}
+.switches.bottom{margin-top:auto;padding-top:14px}
+.seg{display:grid;grid-template-columns:1fr 1fr;padding:3px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);margin-bottom:10px}
+.seg button{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:9px;font-size:14px;color:var(--text-soft)}
+.seg button svg{width:16px;height:16px;fill:currentColor}
+.seg button[aria-checked="true"]{color:var(--text);background:linear-gradient(180deg,var(--face-hi),var(--face-lo));box-shadow:inset 0 1px 0 var(--edge-light),0 3px 8px rgba(0,0,0,.35)}
+
+/* AI voice */
+.led.stale{background:radial-gradient(circle at 40% 35%,#FFE0A3,#F2B544 60%);box-shadow:0 0 8px rgba(242,181,68,.7)}
+.seg.presets{grid-template-columns:1fr 1fr;gap:3px}
+.seg.presets button{flex-direction:column;align-items:flex-start;height:auto;padding:10px 12px;text-align:left;gap:2px}
+.seg.presets button b{font-weight:500;font-size:14px}
+.seg.presets button small{font-size:11.5px;color:var(--text-dim);line-height:1.4}
+.seg.presets button[aria-checked="true"] small{color:var(--text-soft)}
+.ai-summary{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);letter-spacing:.04em}
+.ai-summary b{color:var(--text);font-weight:500;margin-right:3px}
+.panel .t{font-weight:500;font-size:15px}
+.panel small.muted{display:block;font-size:12.5px;margin-top:2px}
+
+/* sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(10,12,15,.55);backdrop-filter:blur(3px);opacity:0;transition:opacity .2s;z-index:20}
+.sheet-bg.open{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:86vh;overflow:auto;margin:0 auto;max-width:560px;border-radius:20px 20px 0 0;padding:14px 18px calc(24px + env(safe-area-inset-bottom));z-index:21;
+  background:linear-gradient(180deg,#3F444C,#31353B);box-shadow:inset 0 1px 0 var(--edge-light),0 -18px 40px rgba(0,0,0,.5);transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.sheet.open{transform:none}
+.sheet .grip{width:42px;height:5px;border-radius:3px;margin:0 auto 14px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
+.sheet h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-family:var(--mono);color:var(--text-dim);margin:18px 0 8px}
+.sheet h2:first-of-type{margin-top:4px}
+.setting{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
+.setting .label{display:flex;flex-direction:column;gap:2px}
+.setting .label small{font-size:12.5px;color:var(--text-soft)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper .btn{width:34px;height:34px;padding:0;font-size:18px;color:var(--text-soft);border-radius:9px}
+.stepper .val{font-family:var(--mono);min-width:54px;text-align:center;font-size:15px}
+.keymap-row{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(0,0,0,.25);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+.keymap-row:first-of-type{border-top:0;box-shadow:none}
+.keymap-row .keys{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:28px}
+.keymap-row .keys .k{display:inline-flex;align-items:stretch;border-radius:7px;background:linear-gradient(180deg,var(--face-hi),var(--face-lo));box-shadow:inset 0 1px 0 var(--edge-light),0 2px 0 rgba(0,0,0,.45),0 3px 4px rgba(0,0,0,.3)}
+.keymap-row .keys .k .key{box-shadow:none;background:none;border-radius:0}
+.keymap-row .keys .k button{width:22px;height:24px;font-size:13px;color:var(--text-dim);border-left:1px solid rgba(0,0,0,.35);border-radius:0 7px 7px 0}
+.keymap-row .keys .k button:hover{color:var(--text)}
+.keymap-row .empty-keys{font-size:12px;color:var(--text-dim)}
+.sig-mon{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font-family:var(--mono);font-size:11.5px}
+.sig-mon .sig{display:flex;align-items:center;gap:10px}
+.wiz-title{font-size:28px;font-weight:500;margin-top:4px}
+.wiz-desc{font-size:16px;color:var(--text-soft);line-height:1.6}
+.wiz-wait{display:flex;align-items:center;gap:10px;padding:18px 0}
+.wiz-row{padding:8px 0;border-top:1px solid rgba(0,0,0,.25)}
+.wiz-row:first-child{border-top:0}
+.wiz-row.cur{color:var(--lamp)}
+.warn-text{color:#FFB0A9}
+.diag-list{margin:0;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font:12px/1.7 var(--mono);color:var(--text);white-space:pre-wrap;word-break:break-all;min-height:50vh;max-height:66vh;overflow:auto}
+.learn-note{font-family:var(--mono);font-size:12px;color:var(--lamp);animation:blink 1s steps(2,start) infinite}
+
+.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translate(-50%,20px);padding:10px 16px;border-radius:12px;background:linear-gradient(180deg,#F6F7F9,#CFD3D9);color:#20242A;font-size:14px;font-weight:500;box-shadow:var(--raise),0 0 22px var(--lamp-glow);opacity:0;pointer-events:none;transition:.22s;z-index:30;max-width:calc(100% - 36px);text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+.done-card{padding:26px 18px;text-align:center;border-radius:var(--r);background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink)}
+.done-card .big{font-size:22px;color:var(--lamp);margin-bottom:8px}
+
+@media (min-width:720px){
+  .app{max-width:640px}
+  .knob{width:172px;height:172px}
+  .knob .ticks i{transform-origin:50% 80px;top:7px}
+  .knob .labels span{transform-origin:50% 102px}
+  .knob .cap{inset:26px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app" class="app" aria-live="polite"></div>
+<div id="toast" class="toast" role="status"></div>
+
+<script>
+/* =====================================================================
+   EarCue · 이어큐 — presenter's earpiece prompter (prototype)
+   ===================================================================== */
+'use strict';
+const APP_VERSION = 'v28';
+/* Inside the Android app the web page runs in a WebView with Capacitor; native plugins replace the
+   browser's speech APIs and expose hardware keys. In a plain browser none of this exists. */
+const CAP = window.Capacitor || null;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const NP = (name) => (NATIVE && CAP.Plugins && CAP.Plugins[name]) || null;
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); const m = Math.floor(s / 60); return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0'); };
+const fmtDate = (ts) => { const d = new Date(ts); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; };
+
+const ICON = {
+  prev: '<svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM19 5v14L9 12z"/></svg>',
+  next: '<svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM5 5v14l10-7z"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>',
+  stop: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8 1.5-1.5L10 12l6.5-6.5z"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.7 7.7 0 0 0-1.7-1L15 3H9l-.4 2.7a7.7 7.7 0 0 0-1.7 1l-2.5-1-2 3.5L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.7 7.7 0 0 0 1.7 1L9 21h6l.4-2.7a7.7 7.7 0 0 0 1.7-1l2.5 1 2-3.5zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="M9 4l8 8-8 8-1.5-1.5L14 12 7.5 5.5z"/></svg>',
+  ear: '<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7h2a5 5 0 1 1 8.6 3.5c-1 1-1.6 1.9-1.6 3.5a2 2 0 0 1-4 0H8a4 4 0 0 0 8 0c0-.8.3-1.3 1.1-2.1A7 7 0 0 0 12 2z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
+  split: '<svg viewBox="0 0 24 24"><path d="M11 3h2v18h-2zM4 8l4 4-4 4V8zm16 0v8l-4-4z"/></svg>',
+  merge: '<svg viewBox="0 0 24 24"><path d="M11 3h2v18h-2zM8 8v8l-4-4zm8 0l4 4-4 4z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24"><path d="M6 7h12l-1 14H7zM9 3h6l1 2h4v2H4V5h4z"/></svg>',
+  speaker: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zm11.5 3a3.5 3.5 0 0 0-2-3.2v6.4a3.5 3.5 0 0 0 2-3.2zm-2-7v2.1a5 5 0 0 1 0 9.8V19a7 7 0 0 0 0-14z"/></svg>',
+  rec: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg>',
+  spark: '<svg viewBox="0 0 24 24"><path d="M12 2l1.8 5.6L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.4zM5 15l.9 2.6L8.5 18l-2.6.9L5 21.5l-.9-2.6L1.5 18l2.6-.4zM19 14l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>',
+  mic: '<svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11z"/></svg>',
+};
+
+/* ---------------- sample script ---------------- */
+const SAMPLE_TITLE = '샘플 · 분기 제품 발표';
+const SAMPLE_TEXT = `안녕하세요. 오늘 3분기 제품 로드맵을 발표하게 된 제품팀의 김지수입니다.
+오늘 발표는 세 부분으로 나뉩니다. 먼저 지난 분기 성과를 짧게 돌아보고, 다음으로 새 기능 세 가지를 소개한 뒤, 마지막으로 출시 일정을 공유하겠습니다.
+
+지난 분기 월간 활성 사용자는 42만 명으로, 전 분기 대비 18% 성장했습니다. 특히 모바일 앱의 재방문율이 눈에 띄게 올랐습니다.
+이 성장의 절반 이상은 온보딩 개선에서 나왔습니다. 첫 사용 후 7일 안에 두 번째 방문을 하는 비율이 31%에서 47%로 뛰었습니다.
+
+이제 새 기능을 말씀드리겠습니다. 첫 번째는 오프라인 모드입니다. 인터넷이 끊겨도 마지막으로 열었던 문서를 그대로 보고 편집할 수 있습니다.
+두 번째는 팀 공유 폴더입니다. 폴더 하나를 공유하면 그 안의 모든 문서에 같은 권한이 적용됩니다.
+세 번째는 음성 메모입니다. 녹음하면 자동으로 텍스트가 붙고, 문장 단위로 검색이 됩니다.
+
+출시 일정입니다. 오프라인 모드는 다음 달 첫째 주에 베타로 열고, 팀 공유 폴더는 그 다음 달에 정식 출시합니다. 음성 메모는 연말까지 마무리하겠습니다.
+질문이 있으시면 지금 받겠습니다. 감사합니다.`;
+
+/* ---------------- storage ---------------- */
+/* Defaults cover presentation clickers (PageUp/Down, arrows, F5), remotes in music mode (media keys) and
+   ring remotes in shorts mode (swipe up = next, swipe down = previous, centre tap = read). */
+const DEFAULT_KEYMAP = {
+  next: ['PageDown', 'ArrowRight', 'ArrowDown', ' ', 'Media:next', 'Swipe↑'],
+  prev: ['PageUp', 'ArrowLeft', 'ArrowUp', 'Media:prev', 'Swipe↓'],
+  play: ['F5', '.', 'Enter', 'b', 'Media:play', 'Tap'],
+};
+const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, fontSize: 18, elVoiceId: '', elVoiceName: '', elPreset: 'calm', elKeepRec: true };
+
+const store = {
+  load(k, d) { try { const v = localStorage.getItem('earcue.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  save(k, v) { try { localStorage.setItem('earcue.' + k, JSON.stringify(v)); } catch { toast('저장 공간이 부족합니다'); } },
+};
+let scripts = store.load('scripts', []);
+let settings = Object.assign({}, DEFAULT_SETTINGS, store.load('settings', {}));
+settings.keymap = Object.assign({}, DEFAULT_KEYMAP, settings.keymap || {});
+const saveScripts = () => store.save('scripts', scripts);
+const saveSettings = () => store.save('settings', settings);
+
+/* ---------------- sentence splitting ---------------- */
+const TERM = '.!?。！？';
+const CLOSERS = '"\'”’」』)]』】';
+function splitLine(t) {
+  const res = []; let start = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (!TERM.includes(t[i])) continue;
+    let j = i;
+    while (j + 1 < t.length && TERM.includes(t[j + 1])) j++;
+    while (j + 1 < t.length && CLOSERS.includes(t[j + 1])) j++;
+    if (j + 1 >= t.length || /\s/.test(t[j + 1])) {
+      const piece = t.slice(start, j + 1).trim();
+      if (piece) res.push(piece);
+      start = j + 1; i = j;
+    }
+  }
+  const rest = t.slice(start).trim();
+  if (rest) res.push(rest);
+  return res;
+}
+function splitSentences(text) {
+  return String(text).replace(/\r/g, '').split(/\n+/).flatMap((l) => splitLine(l.trim()));
+}
+const mkSentences = (arr) => arr.map((text) => ({ id: uid(), text }));
+
+/* ---------------- my-voice recordings (IndexedDB) ---------------- */
+const idb = {
+  db: null,
+  open() {
+    if (this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej) => {
+      if (!window.indexedDB) return rej(new Error('no-idb'));
+      const req = indexedDB.open('earcue', 1);
+      req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains('recordings')) db.createObjectStore('recordings', { keyPath: 'id' }).createIndex('scriptId', 'scriptId'); };
+      req.onsuccess = () => { this.db = req.result; res(this.db); };
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async write(fn) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('recordings', 'readwrite'); fn(t.objectStore('recordings')); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); },
+  put(rec) { return this.write((st) => st.put(rec)); },
+  del(id) { return this.write((st) => st.delete(id)); },
+  async byScript(scriptId) { const db = await this.open(); return new Promise((res, rej) => { const req = db.transaction('recordings').objectStore('recordings').index('scriptId').getAll(scriptId); req.onsuccess = () => res(req.result || []); req.onerror = () => rej(req.error); }); },
+};
+const recs = new Map(); // sentenceId -> { id, scriptId, blob, duration(ms), mime, url? }
+async function loadRecs(scriptId) {
+  recs.forEach((r) => r.url && URL.revokeObjectURL(r.url)); recs.clear();
+  try { for (const r of await idb.byScript(scriptId)) recs.set(r.id, r); } catch {}
+}
+const recUrl = (r) => r.url || (r.url = URL.createObjectURL(r.blob));
+const fmtSec = (ms) => (ms / 1000).toFixed(1) + 's';
+function syncRecCount(script) { script.recCount = script.sentences.filter((x) => recs.has(x.id)).length; saveScripts(); }
+async function saveRec(script, sentenceId, take, extra = {}) {
+  const r = { id: sentenceId, scriptId: script.id, blob: take.blob, duration: take.duration, mime: take.mime, createdAt: Date.now(), kind: 'rec', ...extra };
+  try { await idb.put(r); } catch { toast('녹음을 저장할 수 없습니다 (저장 공간 확인)'); return false; }
+  const old = recs.get(sentenceId); if (old && old.url) URL.revokeObjectURL(old.url);
+  recs.set(sentenceId, r); syncRecCount(script); return true;
+}
+async function removeRec(script, id) { const r = recs.get(id); if (!r) return; if (r.url) URL.revokeObjectURL(r.url); recs.delete(id); try { await idb.del(id); } catch {} syncRecCount(script); }
+async function removeAllRecs(scriptId) { try { for (const r of await idb.byScript(scriptId)) await idb.del(r.id); } catch {} recs.clear(); }
+
+const recPlayer = {
+  audio: null, raf: 0, playing: false, t0: 0,
+  play(rec, { onStart, onProgress, onEnd } = {}) {
+    this.stop();
+    const a = new Audio(recUrl(rec));
+    a.preservesPitch = true; a.mozPreservesPitch = true;
+    a.playbackRate = clamp(settings.rate, 0.5, 5);
+    let finished = false;
+    const finish = (cancelled) => { if (finished) return; finished = true; cancelAnimationFrame(this.raf); this.playing = false; this.audio = null; onEnd && onEnd({ cancelled, dur: performance.now() - this.t0, rate: a.playbackRate }); };
+    a.onplaying = () => {
+      if (this.playing) return; this.playing = true; this.t0 = performance.now(); onStart && onStart();
+      const tick = () => { if (!this.playing) return; onProgress && onProgress(clamp((a.currentTime * 1000) / rec.duration, 0, 1)); this.raf = requestAnimationFrame(tick); };
+      this.raf = requestAnimationFrame(tick);
+    };
+    a.onended = () => finish(false);
+    a.onerror = () => { toast('녹음을 재생할 수 없습니다'); finish(true); };
+    this.audio = a; this.t0 = performance.now();
+    a.play().catch(() => { toast('화면을 한 번 터치한 뒤 다시 눌러 주세요'); finish(true); });
+  },
+  stop() { cancelAnimationFrame(this.raf); const a = this.audio; if (a) { a.onended = null; a.onerror = null; a.pause(); a.removeAttribute('src'); } this.audio = null; this.playing = false; },
+};
+
+const recorder = {
+  stream: null, mr: null, chunks: [], t0: 0, ctx: null, analyser: null, raf: 0, onLevel: null,
+  get active() { return !!(this.mr && this.mr.state === 'recording'); },
+  async prepare() {
+    if (this.stream) return true;
+    if (!navigator.mediaDevices || !window.MediaRecorder) { toast('이 브라우저는 녹음을 지원하지 않습니다'); return false; }
+    try { this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch { toast('마이크 사용이 허용되지 않았습니다'); return false; }
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.analyser = this.ctx.createAnalyser(); this.analyser.fftSize = 512; this.ctx.createMediaStreamSource(this.stream).connect(this.analyser); } catch {}
+    return true;
+  },
+  mime() { return ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/aac'].find((m) => MediaRecorder.isTypeSupported(m)) || ''; },
+  async start() {
+    if (!(await this.prepare())) return false;
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    this.chunks = []; const m = this.mime();
+    try { this.mr = new MediaRecorder(this.stream, m ? { mimeType: m, audioBitsPerSecond: 48000 } : undefined); } catch { toast('녹음을 시작할 수 없습니다'); return false; }
+    this.mr.ondataavailable = (e) => { if (e.data && e.data.size) this.chunks.push(e.data); };
+    this.mr.start(); this.t0 = performance.now(); this.meter(); return true;
+  },
+  stop() {
+    return new Promise((res) => {
+      const mr = this.mr; cancelAnimationFrame(this.raf);
+      if (!mr || mr.state === 'inactive') { this.mr = null; return res(null); }
+      mr.onstop = () => { const duration = performance.now() - this.t0; const blob = new Blob(this.chunks, { type: mr.mimeType || 'audio/webm' }); this.mr = null; res(duration > 300 ? { blob, duration, mime: blob.type } : null); };
+      mr.stop();
+    });
+  },
+  meter() {
+    if (!this.analyser) return; const buf = new Uint8Array(this.analyser.fftSize);
+    const tick = () => { if (!this.active) return; this.analyser.getByteTimeDomainData(buf); let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; } this.onLevel && this.onLevel(Math.min(1, Math.sqrt(sum / buf.length) * 3.2)); this.raf = requestAnimationFrame(tick); };
+    this.raf = requestAnimationFrame(tick);
+  },
+  release() { cancelAnimationFrame(this.raf); if (this.active) { try { this.mr.stop(); } catch {} } this.mr = null; if (this.stream) this.stream.getTracks().forEach((t) => t.stop()); this.stream = null; if (this.ctx) { this.ctx.close().catch(() => {}); this.ctx = null; this.analyser = null; } },
+};
+
+/* ---------------- ElevenLabs: cloned voice + generated sentences ----------------
+   The API key is typed by the user into the app and kept in this browser only; every call goes straight to
+   api.elevenlabs.io from the device. Generated clips are stored beside the presenter's own recordings. */
+const PRESETS = {
+  calm:     { label: '차분한 강연',  desc: '안정적이고 또박또박, 조금 느리게',      v: { stability: 0.7,  similarity_boost: 0.8,  style: 0.15, speed: 0.95, use_speaker_boost: true } },
+  strong:   { label: '힘 있는 연설', desc: '억양이 크고 강조가 분명함',            v: { stability: 0.3,  similarity_boost: 0.75, style: 0.55, speed: 1.0,  use_speaker_boost: true } },
+  friendly: { label: '친근한 발표',  desc: '가볍고 부드럽게, 약간 빠르게',         v: { stability: 0.45, similarity_boost: 0.75, style: 0.35, speed: 1.05, use_speaker_boost: true } },
+  neutral:  { label: '내 녹음 그대로', desc: '녹음 샘플의 말투를 최대한 유지',      v: { stability: 0.5,  similarity_boost: 0.85, style: 0.0,  speed: 1.0,  use_speaker_boost: true } },
+};
+const textHash = (t) => { let h = 5381; const n = normalize(t); for (let i = 0; i < n.length; i++) h = ((h << 5) + h + n.charCodeAt(i)) | 0; return String(h); };
+const extOf = (mime) => /mp4|aac/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : /wav/.test(mime) ? 'wav' : /mpeg/.test(mime) ? 'mp3' : 'webm';
+const eleven = {
+  base: 'https://api.elevenlabs.io/v1', model: 'eleven_multilingual_v2',
+  key() { return store.load('eleven', {}).key || ''; },
+  setKey(k) { store.save('eleven', { key: String(k || '').trim() }); },
+  async req(path, opt = {}) {
+    const k = this.key(); if (!k) throw new Error('ElevenLabs API 키를 먼저 입력하세요');
+    let res;
+    try { res = await fetch(this.base + path, { ...opt, headers: { 'xi-api-key': k, ...(opt.headers || {}) } }); }
+    catch { throw new Error('ElevenLabs에 연결할 수 없습니다. 인터넷 연결을 확인하세요'); }
+    if (!res.ok) {
+      let msg = `오류 ${res.status}`, code = '';
+      try { const j = await res.json(); const d = j.detail; code = (d && d.status) || ''; msg = (d && (d.message || (typeof d === 'string' ? d : d.status))) || msg; } catch {}
+      if (/missing_permissions|permission/i.test(code + ' ' + msg)) {
+        const need = /voice/i.test(path) ? 'Voices: Read and write' : /text-to-speech/i.test(path) ? 'Text to Speech: Access' : 'User: Read';
+        msg = `API 키에 권한이 없습니다. ElevenLabs → API Keys에서 이 키를 편집해 "${need}" 권한을 켜 주세요`;
+      } else if (res.status === 401 && !code) msg = 'API 키가 올바르지 않습니다';
+      else if (code) msg = `${msg} (${code})`;
+      throw new Error(msg);
+    }
+    return res;
+  },
+  subscription() { return this.req('/user/subscription').then((r) => r.json()); },
+  voices() { return this.req('/voices').then((r) => r.json()).then((j) => j.voices || []); },
+  clone(name, blobs) {
+    const fd = new FormData();
+    fd.append('name', name); fd.append('remove_background_noise', 'true');
+    fd.append('description', 'EarCue 발표자 목소리'); fd.append('labels', JSON.stringify({ language: 'ko', use_case: 'presentation' }));
+    blobs.forEach((b, i) => fd.append('files', b, `sample-${i + 1}.${extOf(b.type)}`));
+    return this.req('/voices/add', { method: 'POST', body: fd }).then((r) => r.json());
+  },
+  async speak(voiceId, text, preset, ctx = {}) {
+    const body = { text, model_id: this.model, voice_settings: PRESETS[preset].v };
+    if (ctx.prev) body.previous_text = ctx.prev; if (ctx.next) body.next_text = ctx.next;
+    const res = await this.req(`/text-to-speech/${voiceId}?output_format=mp3_44100_128`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return res.blob();
+  },
+};
+/* ElevenLabs accepts at most 25 sample files per voice, so the per-sentence takes are decoded, joined with a
+   short pause, resampled to 22.05 kHz mono and re-encoded as WAV files of about 110 s each. */
+async function mergeSamples(blobs, onNote, maxSec = 110) {
+  const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) throw new Error('이 브라우저는 오디오 합치기를 지원하지 않습니다');
+  const ctx = new Ctx(); const sr = 22050; const gap = new Float32Array(Math.round(sr * 0.35));
+  const files = []; let cur = [], curLen = 0, i = 0;
+  const flush = () => { if (!cur.length) return; const out = new Float32Array(curLen); let o = 0; for (const c of cur) { out.set(c, o); o += c.length; } files.push(wavBlob(out, sr)); cur = []; curLen = 0; };
+  for (const b of blobs) {
+    i++; onNote && onNote(`샘플 합치는 중 ${i}/${blobs.length}`);
+    let buf; try { buf = await ctx.decodeAudioData(await b.arrayBuffer()); } catch { continue; }
+    const mono = new Float32Array(buf.length);
+    for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let k = 0; k < d.length; k++) mono[k] += d[k] / buf.numberOfChannels; }
+    const ratio = buf.sampleRate / sr, n = Math.floor(mono.length / ratio), rs = new Float32Array(n);
+    for (let k = 0; k < n; k++) { const x = k * ratio, x0 = Math.floor(x), t = x - x0; rs[k] = mono[x0] * (1 - t) + (mono[Math.min(x0 + 1, mono.length - 1)] || 0) * t; }
+    if (curLen + rs.length > maxSec * sr) flush();
+    cur.push(rs, gap); curLen += rs.length + gap.length;
+  }
+  flush(); ctx.close().catch(() => {});
+  if (!files.length) throw new Error('녹음을 읽을 수 없습니다');
+  return files;
+}
+function wavBlob(f32, sr) {
+  const n = f32.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, f32[i])) * 32767, true);
+  return new Blob([b], { type: 'audio/wav' });
+}
+function blobDuration(blob, fallbackMs) {
+  return new Promise((res) => {
+    const url = URL.createObjectURL(blob); const a = new Audio(); let done = false;
+    const finish = (ms) => { if (done) return; done = true; URL.revokeObjectURL(url); res(ms); };
+    a.onloadedmetadata = () => finish(isFinite(a.duration) && a.duration > 0 ? a.duration * 1000 : fallbackMs);
+    a.onerror = () => finish(fallbackMs); setTimeout(() => finish(fallbackMs), 4000);
+    a.src = url;
+  });
+}
+/* which sentences need (re)generation */
+function aiPlan(script) {
+  const plan = { fresh: [], stale: [], missing: [], kept: [], chars: 0 };
+  for (const x of script.sentences) {
+    const r = recs.get(x.id); const t = x.text.trim(); if (!t) continue;
+    if (r && r.kind === 'rec' && settings.elKeepRec) { plan.kept.push(x); continue; }
+    if (r && r.kind === 'ai' && r.textHash === textHash(t) && r.preset === settings.elPreset && r.voiceId === settings.elVoiceId) { plan.fresh.push(x); continue; }
+    (r && r.kind === 'ai' ? plan.stale : plan.missing).push(x); plan.chars += t.length;
+  }
+  return plan;
+}
+const aiJob = { running: false, done: 0, total: 0, note: '', cancel: false };
+async function generateAll(script, onTick) {
+  const plan = aiPlan(script); const todo = [...plan.stale, ...plan.missing];
+  if (!settings.elVoiceId) throw new Error('먼저 목소리를 선택하거나 만들어 주세요');
+  if (!todo.length) { toast('모든 문장이 최신 상태입니다'); return; }
+  aiJob.running = true; aiJob.done = 0; aiJob.total = todo.length; aiJob.cancel = false; aiJob.note = '';
+  try {
+    for (const x of todo) {
+      if (aiJob.cancel) break;
+      const i = script.sentences.indexOf(x);
+      const ctx = { prev: i > 0 ? script.sentences[i - 1].text : '', next: i < script.sentences.length - 1 ? script.sentences[i + 1].text : '' };
+      aiJob.note = `${i + 1}번 문장 생성 중`; onTick && onTick();
+      const blob = await eleven.speak(settings.elVoiceId, x.text.trim(), settings.elPreset, ctx);
+      const duration = await blobDuration(blob, x.text.length / 5.5 * 1000);
+      await saveRec(script, x.id, { blob, duration, mime: blob.type || 'audio/mpeg' }, { kind: 'ai', textHash: textHash(x.text), preset: settings.elPreset, voiceId: settings.elVoiceId });
+      aiJob.done++; onTick && onTick();
+    }
+  } finally { aiJob.running = false; aiJob.note = ''; onTick && onTick(); }
+}
+
+/* ---------------- TTS engine ---------------- */
+const synth = window.speechSynthesis;
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const IS_DESKTOP_CHROME = /Chrome\//.test(navigator.userAgent) && !/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
+let voices = [];
+function loadVoices() { if (NP('EarTts')) return; if (!synth) return; voices = synth.getVoices(); }
+if (synth && !NP('EarTts')) { loadVoices(); synth.onvoiceschanged = () => { loadVoices(); if (state.view === 'stage' && sheetOpen) renderSheet(); }; }
+if (NP('EarTts')) {
+  const P = NP('EarTts');
+  const loadNative = () => P.voices().then((r) => {
+    voices = (r.voices || []).filter((v) => !v.network).map((v) => ({ voiceURI: v.name, name: v.name.replace(/^ko-kr-/i, '').replace(/-/g, ' '), lang: v.lang })).sort((a, b) => (/^ko/i.test(b.lang) - /^ko/i.test(a.lang)) || a.name.localeCompare(b.name));
+    if (state.view === 'stage' && sheetOpen) renderSheet();
+  }).catch(() => {});
+  P.addListener('ready', loadNative); loadNative();
+  P.addListener('start', (e) => { const h = tts.native; if (h && h.id === e.id) h.onStart(); });
+  P.addListener('range', (e) => { const h = tts.native; if (h && h.id === e.id) h.onRange(e.end || e.start || 0); });
+  P.addListener('done', (e) => { const h = tts.native; if (h && h.id === e.id) h.onDone(); });
+  P.addListener('stop', (e) => { const h = tts.native; if (h && h.id === e.id) h.onStop(); });
+  P.addListener('error', (e) => { const h = tts.native; if (h && h.id === e.id) h.onError(e.detail || 'error'); });
+}
+function pickVoice() {
+  if (!voices.length) return null;
+  if (settings.voiceURI) { const v = voices.find((x) => x.voiceURI === settings.voiceURI); if (v) return v; }
+  return voices.find((v) => /^ko/i.test(v.lang) && /google/i.test(v.name)) || voices.find((v) => /^ko/i.test(v.lang)) || voices[0];
+}
+
+const tts = {
+  speaking: false, utter: null, t0: 0, charsPerSec: 5.5, lastError: '', // ko-KR calibrates itself as it speaks
+  raf: 0, keepAlive: 0,
+  native: null,
+  speakNative(text, { onStart, onProgress, onEnd } = {}) {
+    const P = NP('EarTts'); const id = uid(); const rate = clamp(settings.rate, 0.5, 10);
+    const est = (text.length / this.charsPerSec / rate) * 1000; let boundaryIdx = -1, finished = false;
+    const finish = (cancelled) => {
+      if (finished) return; finished = true; cancelAnimationFrame(this.raf);
+      this.speaking = false; this.native = null; this.utter = null;
+      const dur = performance.now() - this.t0;
+      if (!cancelled && dur > 300 && text.length > 6) { const measured = text.length / (dur / 1000) / rate; this.charsPerSec = clamp(this.charsPerSec * 0.6 + measured * 0.4, 2.5, 12); }
+      onEnd && onEnd({ cancelled, dur, rate });
+    };
+    this.native = {
+      id,
+      onStart: () => { this.t0 = performance.now(); this.speaking = true; onStart && onStart();
+        const tick = () => { if (!this.speaking) return; const el = performance.now() - this.t0; onProgress && onProgress(boundaryIdx >= 0 ? boundaryIdx / text.length : clamp(el / est, 0, 0.97)); this.raf = requestAnimationFrame(tick); };
+        this.raf = requestAnimationFrame(tick); },
+      onRange: (i) => { boundaryIdx = i; },
+      onDone: () => { this.lastError = ''; finish(false); },
+      onStop: () => { this.lastError = ''; finish(true); },
+      onError: (d) => { this.lastError = d; finish(true); },
+    };
+    this.utter = { _byUs: false, native: true }; this.t0 = performance.now();
+    P.speak({ text, id, rate, pitch: 1, voice: settings.voiceURI || '' }).catch((e) => { this.lastError = (e && e.message) || 'tts'; toast('기기 음성을 시작할 수 없습니다'); finish(true); });
+  },
+  speak(text, { onStart, onProgress, onEnd } = {}) {
+    this.stop();
+    if (NP('EarTts')) return this.speakNative(text, { onStart, onProgress, onEnd });
+    if (!synth) { toast('이 브라우저는 음성 합성을 지원하지 않습니다'); onEnd && onEnd({ cancelled: true }); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    const v = pickVoice(); if (v) u.voice = v;
+    u.lang = (v && v.lang) || 'ko-KR';
+    u.rate = clamp(settings.rate, 0.5, 10);
+    u.pitch = 1;
+    const est = (text.length / this.charsPerSec / u.rate) * 1000; // fallback duration estimate
+    let boundaryIdx = -1;
+    let finished = false;
+    const finish = (cancelled) => {
+      if (finished) return; finished = true;
+      cancelAnimationFrame(this.raf); clearInterval(this.keepAlive);
+      this.speaking = false; this.utter = null;
+      const dur = performance.now() - this.t0;
+      if (!cancelled && dur > 300 && text.length > 6) {
+        const measured = text.length / (dur / 1000) / u.rate; // chars/sec at 1×
+        this.charsPerSec = clamp(this.charsPerSec * 0.6 + measured * 0.4, 2.5, 12);
+      }
+      onEnd && onEnd({ cancelled, dur, rate: u.rate });
+    };
+    u.onstart = () => {
+      this.t0 = performance.now(); this.speaking = true;
+      onStart && onStart();
+      const tick = () => {
+        if (!this.speaking) return;
+        const el = performance.now() - this.t0;
+        let p = boundaryIdx >= 0 ? boundaryIdx / text.length : clamp(el / est, 0, 0.97);
+        onProgress && onProgress(Math.max(p, boundaryIdx >= 0 ? boundaryIdx / text.length : 0));
+        this.raf = requestAnimationFrame(tick);
+      };
+      this.raf = requestAnimationFrame(tick);
+      // Desktop Chrome stops long utterances after ~15s unless nudged. Android's pause() cuts playback, so never do it there.
+      if (IS_DESKTOP_CHROME) this.keepAlive = setInterval(() => { if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); } }, 10000);
+    };
+    u.onboundary = (e) => { if (typeof e.charIndex === 'number') boundaryIdx = e.charIndex + (e.charLength || 0); };
+    u.onend = () => { this.lastError = ''; finish(false); };
+    u.onerror = (e) => { this.lastError = u._byUs ? '' : (e.error || 'error'); finish(u._byUs || e.error === 'interrupted' || e.error === 'canceled'); };
+    this.utter = u; this.t0 = performance.now();
+    synth.speak(u);
+    // Some Android builds never fire onstart; treat as started after a tick.
+    setTimeout(() => { if (this.utter === u && !this.speaking && synth.speaking) u.onstart(); }, 250);
+  },
+  stop() {
+    cancelAnimationFrame(this.raf); clearInterval(this.keepAlive);
+    if (this.native) { this.native = null; NP('EarTts') && NP('EarTts').stop().catch(() => {}); this.speaking = false; this.utter = null; return; }
+    if (this.utter) this.utter._byUs = true; // an intentional stop is not a cutoff
+    if (synth && (synth.speaking || synth.pending)) synth.cancel();
+    this.speaking = false; this.utter = null;
+  },
+};
+
+/* Which voice reads a sentence: the presenter's own recording when one exists and is chosen, else TTS. */
+function speakSentence(sentence, handlers) {
+  const r = settings.voiceSource === 'mine' ? recs.get(sentence.id) : null;
+  state.usingRec = r ? (r.kind || 'rec') : ''; state.recMissing = settings.voiceSource === 'mine' && !r;
+  if (r) recPlayer.play(r, handlers); else tts.speak(sentence.text, handlers);
+}
+const isSpeaking = () => tts.speaking || recPlayer.playing;
+function stopVoice() { tts.stop(); recPlayer.stop(); }
+
+/* ---------------- speech recognition (listen mode) ---------------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const normalize = (s) => String(s).toLowerCase().replace(/[\s.,!?。！？、·…"'“”‘’()\[\]\-–—:;]/g, '');
+function bigrams(s) { const out = []; for (let i = 0; i < s.length - 1; i++) out.push(s.slice(i, i + 2)); return out; }
+// Korean sentences share endings ("~습니다"), so the last 4 chars alone prove little. Score the last 14 chars
+// and require the part before the ending to match too.
+function tailMatch(sentence, heard) {
+  const s = normalize(sentence); const h = normalize(heard).slice(-80);
+  if (!s || h.length < 4) return 0;
+  const tail = s.slice(-Math.min(14, s.length));
+  if (tail.length < 5) return h.endsWith(tail) ? 1 : 0;
+  const bg = bigrams(tail); const hit = bg.filter((b) => h.includes(b)).length;
+  const head = bigrams(tail.slice(0, Math.max(2, tail.length - 4)));
+  const headHit = head.filter((b) => h.includes(b)).length;
+  if (head.length && headHit / head.length < 0.5) return 0;
+  return hit / bg.length;
+}
+/* The recognizer and the earpiece fight over audio on Android (mic focus, Bluetooth HFP switch), so the
+   recognizer runs only between reads: it is suspended while TTS speaks and resumed when the read ends. */
+const listener = {
+  rec: null, on: false, suspended: false, heard: '', skip: 0, restartTimer: 0, onMatch: null, nativeFinal: '',
+  start() {
+    if (NP('EarSpeech')) return this.startNative();
+    if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않습니다'); return false; }
+    if (this.rec) return true;
+    const r = new SR();
+    r.lang = 'ko-KR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    r.onresult = (e) => {
+      let text = '';
+      for (let i = this.skip; i < e.results.length; i++) text += e.results[i][0].transcript + ' ';
+      this.heard = text.trim();
+      this.onMatch && this.onMatch(this.heard);
+    };
+    r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('마이크 사용이 허용되지 않았습니다'); this.stop(); settings.listen = false; saveSettings(); renderStageStatus(); } };
+    r.onend = () => { this.skip = 0; if (this.on && !this.suspended) { clearTimeout(this.restartTimer); this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) { try { r.start(); } catch {} } }, 300); } };
+    this.rec = r; this.on = true; this.suspended = false; this.skip = 0;
+    try { r.start(); } catch {}
+    return true;
+  },
+  // new sentence: forget what was heard so far without restarting the recognizer
+  mark() { this.heard = ''; this.nativeFinal = ''; },
+  suspend() {
+    if (this.suspended) return; this.suspended = true; clearTimeout(this.restartTimer);
+    if (this.rec === 'native') { NP('EarSpeech').stop().catch(() => {}); return; }
+    if (this.rec) { try { this.rec.abort(); } catch {} }
+  },
+  resume() {
+    if (!this.suspended) return; this.suspended = false; this.heard = ''; this.nativeFinal = ''; this.skip = 0; clearTimeout(this.restartTimer);
+    if (this.rec === 'native') { this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) NP('EarSpeech').start({ lang: 'ko-KR' }).catch(() => {}); }, 300); return; }
+    if (this.rec) this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) { try { this.rec.start(); } catch {} } }, IS_ANDROID ? 400 : 150);
+  },
+  stop() {
+    this.on = false; this.suspended = false; clearTimeout(this.restartTimer);
+    if (this.rec === 'native') { NP('EarSpeech').stop().catch(() => {}); }
+    else if (this.rec) { try { this.rec.onend = null; this.rec.abort(); } catch {} }
+    this.rec = null; this.heard = ''; this.nativeFinal = ''; this.skip = 0;
+  },
+  startNative() {
+    const P = NP('EarSpeech');
+    if (!this.nativeBound) {
+      this.nativeBound = true;
+      P.addListener('result', (e) => { if (this.rec !== 'native' || this.suspended) return; if (e.final) { this.nativeFinal = (this.nativeFinal + ' ' + e.text).trim(); this.heard = this.nativeFinal; } else this.heard = (this.nativeFinal + ' ' + e.text).trim(); this.onMatch && this.onMatch(this.heard); });
+    }
+    this.rec = 'native'; this.on = true; this.suspended = false; this.heard = ''; this.nativeFinal = '';
+    P.start({ lang: 'ko-KR' }).catch((e) => { toast(/denied/.test(String(e && e.message)) ? '마이크 사용이 허용되지 않았습니다' : '음성 인식을 시작할 수 없습니다'); this.stop(); settings.listen = false; saveSettings(); renderStageStatus(); });
+    return true;
+  },
+};
+
+/* ---------------- app state / router ---------------- */
+const state = { view: 'home', scriptId: null, idx: 0, progress: 0, startedAt: 0, autoTimer: 0, autoDue: 0, lastKey: '', installPrompt: null, learning: null, ttsNote: '', lastSignal: '', usingRec: false, recMissing: false, speakT0: 0, recording: false };
+let sheetOpen = false;
+let wakeLock = null;
+
+function go(hash) { location.hash = hash; }
+let routeSeq = 0;
+async function route() {
+  const h = location.hash.replace(/^#\/?/, '');
+  const [view, id] = h.split('/');
+  stopEverything();
+  const seq = ++routeSeq;
+  if (view === 'diag') { state.view = 'diag'; render(); return; }
+  if (view === 'setup') { state.view = 'setup'; wizard.step = 0; wizard.got = {}; wizard.dup = ''; render(); return; }
+  if (['edit', 'stage', 'record', 'ai'].includes(view) && scripts.find((s) => s.id === id)) {
+    state.view = view; state.scriptId = id;
+    if (view !== 'edit') { state.idx = clamp(state.idx, 0, current().sentences.length - 1); state.progress = 0; state.startedAt = 0; }
+    await loadRecs(id);
+    if (seq !== routeSeq) return;
+  } else { state.view = 'home'; state.scriptId = null; }
+  render();
+}
+window.addEventListener('hashchange', route);
+const current = () => scripts.find((s) => s.id === state.scriptId);
+
+function stopEverything() {
+  stopVoice(); listener.stop(); recorder.release(); media.stop(); state.recording = false; state.ttsNote = ''; setVolumeCapture(false); clearTimeout(state.autoTimer); state.autoDue = 0;
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  closeSheet(true);
+}
+
+/* ---------------- render ---------------- */
+const app = $('#app');
+function render() {
+  app.className = 'app';
+  if (state.view !== 'stage') document.body.classList.remove('swipe-lock');
+  if (state.view === 'home') renderHome();
+  else if (state.view === 'edit') renderEditor();
+  else if (state.view === 'record') renderRecord();
+  else if (state.view === 'ai') renderAI();
+  else if (state.view === 'diag') renderDiag();
+  else if (state.view === 'setup') renderWizard();
+  else renderStage();
+}
+
+function topbar({ left = '', right = '', title = '' } = {}) {
+  return `<header class="topbar"><div class="left">${left}</div>${title}<div class="right">${right}</div></header>`;
+}
+const brand = (big) => `<div class="brand"><b>EarCue</b><small>이어큐 · 귓속 프롬프터</small></div>`;
+
+/* ---- home ---- */
+function renderHome() {
+  const list = scripts.slice().sort((a, b) => b.updatedAt - a.updatedAt).map((s) => `
+    <button class="script-card" data-open="${s.id}">
+      <div class="grow"><div class="title">${esc(s.title || '제목 없음')}</div>
+      <div class="meta">${s.sentences.length}문장${s.recCount ? ` · 내 목소리 ${s.recCount}/${s.sentences.length}` : ''} · ${fmtDate(s.updatedAt)}</div></div>
+      <span class="go">${ICON.chev}</span>
+    </button>`).join('');
+  app.innerHTML = `
+    <div class="hero-brand">${brand(true)}<div class="eyebrow version" id="ver">${APP_VERSION}${NATIVE ? ' · 앱' : ''}</div></div>
+    <main class="view">
+      <section class="stack">
+        <div class="row between"><h2>내 대본</h2>${state.installPrompt ? '<button class="btn small" id="install">홈 화면에 추가</button>' : ''}</div>
+        ${list ? `<div class="script-list">${list}</div>` : '<div class="empty">아직 대본이 없습니다.<br>아래에서 파일을 올리거나 샘플로 먼저 써 보세요.</div>'}
+      </section>
+      <section class="stack">
+        <h2>대본 가져오기</h2>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept=".txt,.md,.markdown,.text,.docx,text/plain">
+          <strong>파일을 여기에 놓거나 눌러서 선택</strong>
+          문장 단위로 자동으로 나눠 드립니다
+          <div class="formats">TXT · MD · DOCX</div>
+        </label>
+        <textarea class="field" id="paste" rows="4" placeholder="또는 대본을 여기에 붙여넣기"></textarea>
+        <div class="row">
+          <button class="btn grow" id="fromPaste">붙여넣은 대본 추가</button>
+          <button class="btn ghost" id="sample">샘플 대본</button>
+        </div>
+        <p class="hint">대본은 이 기기 안에만 저장됩니다. 한 번 불러온 뒤에는 인터넷 없이도 발표 화면을 쓸 수 있습니다. <a class="plain-link" href="https://orrket-2025.github.io/earcue/privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a></p>
+      </section>
+    </main>`;
+  app.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => go('/edit/' + b.dataset.open));
+  const drop = $('#drop'), file = $('#file');
+  file.onchange = () => { if (file.files[0]) importFile(file.files[0]); file.value = ''; };
+  ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) importFile(f); });
+  $('#fromPaste').onclick = () => { const t = $('#paste').value.trim(); if (!t) { toast('붙여넣은 내용이 없습니다'); return; } addScript(t.split('\n')[0].slice(0, 40), t); };
+  $('#sample').onclick = () => addScript(SAMPLE_TITLE, SAMPLE_TEXT);
+  const inst = $('#install'); if (inst) inst.onclick = async () => { const p = state.installPrompt; if (!p) return; p.prompt(); await p.userChoice; state.installPrompt = null; render(); };
+}
+
+function addScript(title, text) {
+  const sentences = mkSentences(splitSentences(text));
+  if (!sentences.length) { toast('문장을 찾지 못했습니다'); return; }
+  const s = { id: uid(), title: title.trim() || '제목 없음', sentences, createdAt: Date.now(), updatedAt: Date.now() };
+  scripts.push(s); saveScripts();
+  toast(`${sentences.length}개 문장으로 나눴습니다`);
+  go('/edit/' + s.id);
+}
+
+async function importFile(f) {
+  const name = f.name.replace(/\.[^.]+$/, '');
+  if (/\.docx$/i.test(f.name)) {
+    try {
+      if (!window.mammoth) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js');
+      const res = await window.mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
+      addScript(name, res.value);
+    } catch { toast('DOCX를 읽으려면 인터넷 연결이 필요합니다. TXT로 저장해서 올려 주세요.'); }
+    return;
+  }
+  addScript(name, await f.text());
+}
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+
+/* ---- editor ---- */
+function renderEditor() {
+  const s = current();
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="대본 목록">${ICON.back}</button>`, title: brand(), right: `<button class="btn lamp small" id="toStage">${ICON.ear}발표</button>` })}
+    <main class="view">
+      <input class="field title-input" id="title" value="${esc(s.title)}" placeholder="대본 제목">
+      <div class="row between">
+        <h2>문장 <span class="mono dim" id="count">${s.sentences.length}</span></h2>
+        <div class="row">
+          <button class="btn small ghost" id="resplit">전체 다시 나누기</button>
+          <button class="btn small" id="add">${ICON.plus}문장 추가</button>
+        </div>
+      </div>
+      <button class="rec-entry" id="toRecord">
+        <i class="led ${recs.size ? 'next' : ''}"></i>
+        <span class="grow"><span class="t">내 목소리 녹음</span><small id="recSummary">${recs.size ? `${recs.size}/${s.sentences.length}문장 녹음됨 · 발표 때 내 목소리로 들려줍니다` : '문장을 하나씩 직접 읽어 녹음하면 발표 때 내 목소리로 들려줍니다'}</small></span>
+        ${ICON.mic}
+      </button>
+      <button class="rec-entry" id="toAI">
+        <i class="led ${aiCount(s) ? 'lamp' : ''}"></i>
+        <span class="grow"><span class="t">AI 목소리로 만들기</span><small>${aiEntrySummary(s)}</small></span>
+        ${ICON.spark}
+      </button>
+      <div class="sent-list" id="list"></div>
+      <p class="hint">문장을 누르면 도구가 나타납니다. 커서를 둔 자리에서 나누거나, 다음 문장과 합칠 수 있습니다. 스피커 버튼으로 미리 들어 보세요. 문장을 나누거나 합치면 그 문장의 녹음은 지워지므로 다시 녹음해 주세요.</p>
+      <div class="row between">
+        <button class="btn danger ghost small" id="del">이 대본 삭제</button>
+        <button class="btn lamp" id="toStage2">${ICON.ear}발표 시작</button>
+      </div>
+    </main>`;
+  $('#back').onclick = () => go('/');
+  $('#toStage').onclick = $('#toStage2').onclick = () => { state.idx = 0; go('/stage/' + s.id); };
+  $('#toAI').onclick = () => go('/ai/' + s.id);
+  $('#toRecord').onclick = () => { state.idx = Math.max(0, s.sentences.findIndex((x) => !recs.has(x.id))); if (state.idx < 0) state.idx = 0; go('/record/' + s.id); };
+  $('#title').oninput = (e) => { s.title = e.target.value; touch(); };
+  $('#add').onclick = () => { s.sentences.push({ id: uid(), text: '' }); touch(); renderList(); focusSentence(s.sentences.length - 1); };
+  $('#resplit').onclick = async () => { if (!confirm('모든 문장을 합친 뒤 자동으로 다시 나눕니다. 직접 수정한 구분과 녹음은 모두 사라집니다. 계속할까요?')) return; await removeAllRecs(s.id); s.sentences = mkSentences(splitSentences(s.sentences.map((x) => x.text).join('\n'))); s.recCount = 0; touch(); renderList(); };
+  $('#del').onclick = async () => { if (!confirm(`"${s.title}" 대본과 녹음을 삭제할까요?`)) return; await removeAllRecs(s.id); scripts = scripts.filter((x) => x.id !== s.id); saveScripts(); go('/'); };
+  renderList();
+
+  function touch() { s.updatedAt = Date.now(); saveScripts(); const c = $('#count'); if (c) c.textContent = s.sentences.length; }
+  function renderList() {
+    const list = $('#list');
+    list.innerHTML = s.sentences.map((x, i) => `
+      <div class="sent" data-i="${i}">
+        <div class="num">${String(i + 1).padStart(2, '0')}${ledFor(x)}</div>
+        <textarea rows="1" placeholder="문장을 입력">${esc(x.text)}</textarea>
+        <div class="tools">
+          <button class="btn small" data-act="say">${ICON.speaker}듣기</button>
+          <button class="btn small" data-act="rec">${ICON.mic}${recs.has(x.id) ? '다시 녹음' : '녹음'}</button>
+          <button class="btn small" data-act="split">${ICON.split}커서에서 나누기</button>
+          <button class="btn small" data-act="merge" ${i === s.sentences.length - 1 ? 'disabled' : ''}>${ICON.merge}다음과 합치기</button>
+          <button class="btn small ghost danger" data-act="del">${ICON.trash}</button>
+          <span class="len"><span>${x.text.length}</span>자</span>
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('textarea').forEach(autosize);
+  }
+  function autosize(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+  function focusSentence(i, pos) {
+    const ta = $(`.sent[data-i="${i}"] textarea`); if (!ta) return;
+    ta.focus(); if (pos != null) ta.setSelectionRange(pos, pos);
+  }
+  const list = $('#list');
+  const markFocus = (e) => { const card = e.target.closest('.sent'); if (!card) return; list.querySelectorAll('.sent.focus').forEach((c) => c.classList.remove('focus')); card.classList.add('focus'); };
+  list.addEventListener('focusin', markFocus);
+  list.addEventListener('pointerdown', markFocus);
+  list.addEventListener('input', (e) => { if (e.target.tagName !== 'TEXTAREA') return; const card = e.target.closest('.sent'); const i = +card.dataset.i; s.sentences[i].text = e.target.value; card.querySelector('.len span').textContent = e.target.value.length; autosize(e.target); touch(); });
+  list.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]'); if (!btn) return;
+    const card = btn.closest('.sent'); const i = +card.dataset.i; const ta = card.querySelector('textarea');
+    const act = btn.dataset.act;
+    if (act === 'say') { const r = recs.get(s.sentences[i].id); if (r) recPlayer.play(r); else tts.speak(s.sentences[i].text || ' '); return; }
+    if (act === 'rec') { state.idx = i; go('/record/' + s.id); return; }
+    if (act === 'split') {
+      const pos = ta.selectionStart; const t = s.sentences[i].text;
+      if (pos <= 0 || pos >= t.length) { toast('나눌 위치에 커서를 두고 눌러 주세요'); ta.focus(); return; }
+      const a = t.slice(0, pos).trim(), b = t.slice(pos).trim();
+      if (!a || !b) { toast('나눌 위치에 커서를 두고 눌러 주세요'); ta.focus(); return; }
+      removeRec(s, s.sentences[i].id); s.sentences.splice(i, 1, { id: uid(), text: a }, { id: uid(), text: b }); touch(); renderList(); focusSentence(i + 1, 0); return;
+    }
+    if (act === 'merge') { const nxt = s.sentences[i + 1]; if (!nxt) return; removeRec(s, s.sentences[i].id); removeRec(s, nxt.id); const joined = (s.sentences[i].text + ' ' + nxt.text).trim(); s.sentences.splice(i, 2, { id: uid(), text: joined }); touch(); renderList(); focusSentence(i, joined.length); return; }
+    if (act === 'del') { removeRec(s, s.sentences[i].id); if (s.sentences.length === 1) { s.sentences[0].text = ''; } else s.sentences.splice(i, 1); touch(); renderList(); focusSentence(Math.min(i, s.sentences.length - 1)); }
+  });
+  // mouse users: clicking a card focuses it
+  list.addEventListener('mousedown', (e) => { const card = e.target.closest('.sent'); if (card && !e.target.closest('textarea,button')) { card.querySelector('textarea').focus(); } });
+}
+
+function ledFor(x) {
+  const r = recs.get(x.id); if (!r) return '';
+  if (r.kind === 'ai') return r.textHash === textHash(x.text) ? '<i class="led lamp tiny" title="AI 내 목소리 생성됨"></i>' : '<i class="led stale tiny" title="문장이 바뀌어 다시 생성이 필요합니다"></i>';
+  return '<i class="led next tiny" title="내 목소리 녹음 있음"></i>';
+}
+const aiCount = (s) => s.sentences.filter((x) => { const r = recs.get(x.id); return r && r.kind === 'ai'; }).length;
+function aiEntrySummary(s) {
+  if (!eleven.key()) return 'ElevenLabs 계정을 연결하면 녹음 없이도 내 목소리로 전체 대본을 만들 수 있습니다';
+  const n = aiCount(s); const plan = aiPlan(s);
+  if (!n) return settings.elVoiceName ? `${settings.elVoiceName} · 아직 생성한 문장이 없습니다` : '목소리를 선택하거나 만들어 주세요';
+  return `${settings.elVoiceName || '목소리'} · ${n}/${s.sentences.length}문장 생성됨${plan.stale.length ? ` · ${plan.stale.length}문장 다시 생성 필요` : ''}`;
+}
+
+/* ---- AI voice view ---- */
+function renderAI() {
+  const s = current(); const hasKey = !!eleven.key(); const plan = aiPlan(s);
+  const recSecs = s.sentences.reduce((a, x) => { const r = recs.get(x.id); return a + (r && r.kind === 'rec' ? r.duration : 0); }, 0) / 1000;
+  const presetSeg = Object.entries(PRESETS).map(([k, p]) => `<button role="radio" aria-checked="${settings.elPreset === k}" data-preset="${k}"><b>${p.label}</b><small>${p.desc}</small></button>`).join('');
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: '' })}
+    <main class="view">
+      <section class="stack">
+        <h2>ElevenLabs 연결</h2>
+        <div class="row">
+          <input class="field grow" id="elKey" type="password" autocomplete="off" placeholder="${hasKey ? '저장된 키 사용 중 · 바꾸려면 새 키 입력' : 'API 키 붙여넣기'}" aria-label="ElevenLabs API 키">
+          <button class="btn" id="elSave">저장</button>
+        </div>
+        <div class="status" id="elStatus"><span class="chip"><i class="led ${hasKey ? 'lamp' : ''}"></i>${hasKey ? '연결 확인 중…' : '키가 없습니다'}</span></div>
+        <p class="hint">키는 이 기기의 브라우저에만 저장되고 ElevenLabs로만 전송됩니다. 발급: elevenlabs.io → 프로필 → API Keys. 키 권한은 Text to Speech: Access, Voices: Read and write, User: Read가 필요합니다. 목소리 만들기가 막히면 Voices 쓰기 권한을 확인하세요.</p>
+      </section>
+      <section class="stack" ${hasKey ? '' : 'hidden'}>
+        <div class="row between"><h2>목소리</h2><button class="btn small ghost" id="elReload">목록 새로고침</button></div>
+        <div class="select-wrap"><select class="field" id="elVoice" aria-label="목소리 선택"><option value="">${settings.elVoiceName ? esc(settings.elVoiceName) : '불러오는 중…'}</option></select></div>
+        <div class="panel stack">
+          <div><div class="t">녹음한 문장으로 내 목소리 만들기</div><small class="muted">직접 녹음한 ${recSecs.toFixed(0)}초를 하나로 이어 붙여 학습 샘플로 올립니다 (60초 이상 권장, 최소 30초)</small></div>
+          <div class="row"><input class="field grow" id="cloneName" value="내 목소리" aria-label="목소리 이름"><button class="btn lamp" id="cloneBtn" ${recSecs >= 30 ? '' : 'disabled'}>${ICON.mic}만들기</button></div>
+          <p class="hint">${recSecs >= 30 ? '조용한 곳에서 녹음한 문장일수록 결과가 좋습니다. 만들면 목소리 목록에 추가되고 자동으로 선택됩니다.' : '먼저 "내 목소리 녹음"에서 문장을 더 녹음해 주세요. 30초가 넘으면 이 버튼이 켜집니다.'}</p>
+        </div>
+      </section>
+      <section class="stack" ${hasKey ? '' : 'hidden'}>
+        <h2>말투</h2>
+        <div class="seg presets" role="radiogroup">${presetSeg}</div>
+        <p class="hint">특정 인물의 목소리를 흉내 내지는 않습니다. 말의 속도·안정감·강조 정도를 바꿔 내 목소리의 말투를 조정합니다.</p>
+      </section>
+      <section class="stack" ${hasKey ? '' : 'hidden'}>
+        <h2>문장 음성 만들기</h2>
+        <div class="panel stack">
+          <div class="ai-summary mono">
+            <span><b>${plan.fresh.length}</b> 최신</span><span><b>${plan.stale.length}</b> 다시 생성</span><span><b>${plan.missing.length}</b> 없음</span><span><b>${plan.kept.length}</b> 직접 녹음 유지</span>
+          </div>
+          <button class="switch" role="switch" id="swKeep" aria-checked="${settings.elKeepRec}"><span class="label"><span>직접 녹음한 문장은 유지</span><small>끄면 그 문장도 AI 목소리로 덮어씁니다</small></span><span class="rocker"></span></button>
+          <div class="track" aria-hidden="true"><div class="fill" id="aiFill" style="width:${aiJob.total ? aiJob.done / aiJob.total * 100 : 0}%"></div></div>
+          <div class="row between"><span class="hint" id="aiNote">${aiJob.running ? aiJob.note : `생성할 글자 수 ${plan.chars.toLocaleString()} · 약 ${plan.chars.toLocaleString()} 크레딧`}</span>
+            <button class="btn small" id="aiPreview" ${settings.elVoiceId ? '' : 'disabled'}>${ICON.play}첫 문장 미리 듣기</button></div>
+          <button class="btn lamp" id="aiGen" ${settings.elVoiceId && !aiJob.running && (plan.stale.length + plan.missing.length) ? '' : 'disabled'}>${ICON.spark}${aiJob.running ? `생성 중 ${aiJob.done}/${aiJob.total}` : `${plan.stale.length + plan.missing.length}문장 생성`}</button>
+          ${aiJob.running ? '<button class="btn small ghost" id="aiCancel">중단</button>' : ''}
+        </div>
+        <p class="hint">생성한 음성은 이 기기에 저장되어 발표 때 인터넷 없이 재생됩니다. 문장을 고치면 그 문장만 다시 생성하면 됩니다.</p>
+      </section>
+    </main>`;
+  $('#back').onclick = () => go('/edit/' + s.id);
+  $('#elSave').onclick = () => { const v = $('#elKey').value.trim(); if (!v) { toast('키를 입력해 주세요'); return; } eleven.setKey(v); $('#elKey').value = ''; toast('저장했습니다'); renderAI(); };
+  $('#elKey').onkeydown = (e) => { if (e.key === 'Enter') $('#elSave').click(); };
+  if (!hasKey) return;
+  const setStatus = (html) => { const el = $('#elStatus'); if (el) el.innerHTML = html; };
+  eleven.subscription().then((sub) => {
+    const used = sub.character_count || 0, lim = sub.character_limit || 0;
+    setStatus(`<span class="chip on"><i class="led next"></i>연결됨 · ${esc(sub.tier || '')}</span><span class="chip">남은 크레딧 ${(lim - used).toLocaleString()} / ${lim.toLocaleString()}</span>`);
+  }).catch((e) => setStatus(`<span class="chip warn"><i class="led now"></i>${esc(e.message)}</span>`));
+  const fillVoices = () => eleven.voices().then((list) => {
+    const sel = $('#elVoice'); if (!sel) return;
+    const mine = list.filter((v) => v.category !== 'premade'), pre = list.filter((v) => v.category === 'premade');
+    const opt = (v) => `<option value="${esc(v.voice_id)}" data-name="${esc(v.name)}" ${v.voice_id === settings.elVoiceId ? 'selected' : ''}>${esc(v.name)}${v.category && v.category !== 'premade' ? ` (${esc(v.category)})` : ''}</option>`;
+    sel.innerHTML = `<option value="">목소리 선택</option>${mine.length ? '<optgroup label="내 목소리">' + mine.map(opt).join('') + '</optgroup>' : ''}<optgroup label="기본 제공">${pre.map(opt).join('')}</optgroup>`;
+  }).catch((e) => { const sel = $('#elVoice'); if (sel) sel.innerHTML = `<option value="">목록을 불러올 수 없습니다</option>`; toast(e.message); });
+  fillVoices();
+  $('#elReload').onclick = fillVoices;
+  $('#elVoice').onchange = (e) => { const o = e.target.selectedOptions[0]; settings.elVoiceId = e.target.value; settings.elVoiceName = o ? (o.dataset.name || '') : ''; saveSettings(); renderAI(); };
+  $('#cloneBtn').onclick = async () => {
+    const name = $('#cloneName').value.trim() || '내 목소리';
+    const blobs = s.sentences.map((x) => recs.get(x.id)).filter((r) => r && r.kind === 'rec').map((r) => r.blob);
+    const btn = $('#cloneBtn'); btn.disabled = true; btn.textContent = '준비 중…';
+    try {
+      const files = await mergeSamples(blobs, (t) => { btn.textContent = t; });
+      btn.textContent = `업로드 중 (${files.length}개 파일)…`;
+      const out = await eleven.clone(name, files); settings.elVoiceId = out.voice_id; settings.elVoiceName = name; saveSettings(); toast(`"${name}" 목소리를 만들었습니다`); renderAI();
+    }
+    catch (e) { toast(e.message); renderAI(); }
+  };
+  app.querySelectorAll('[data-preset]').forEach((b) => b.onclick = () => { settings.elPreset = b.dataset.preset; saveSettings(); renderAI(); });
+  $('#swKeep').onclick = () => { settings.elKeepRec = !settings.elKeepRec; saveSettings(); renderAI(); };
+  $('#aiPreview').onclick = async () => {
+    const x = s.sentences.find((y) => y.text.trim()); if (!x) return;
+    const b = $('#aiPreview'); b.disabled = true;
+    try { const blob = await eleven.speak(settings.elVoiceId, x.text.trim(), settings.elPreset, { next: (s.sentences[1] || {}).text }); const dur = await blobDuration(blob, 3000); recPlayer.play({ blob, duration: dur }, { onEnd: () => { b.disabled = false; } }); }
+    catch (e) { toast(e.message); b.disabled = false; }
+  };
+  $('#aiGen').onclick = async () => {
+    const tick = () => { if (state.view !== 'ai') return; const f = $('#aiFill'), n = $('#aiNote'), g = $('#aiGen'); if (f) f.style.width = (aiJob.total ? aiJob.done / aiJob.total * 100 : 0) + '%'; if (n) n.textContent = aiJob.running ? `${aiJob.note} · ${aiJob.done}/${aiJob.total}` : ''; if (g) g.innerHTML = ICON.spark + (aiJob.running ? `생성 중 ${aiJob.done}/${aiJob.total}` : '완료'); };
+    try { aiJob.running = true; aiJob.done = 0; aiJob.total = plan.stale.length + plan.missing.length; renderAI(); const c = $('#aiCancel'); if (c) c.onclick = () => { aiJob.cancel = true; }; await generateAll(s, tick); toast(aiJob.cancel ? `중단했습니다 (${aiJob.done}문장 저장됨)` : `${aiJob.done}문장을 내 목소리로 만들었습니다`); }
+    catch (e) { aiJob.running = false; toast(e.message); }
+    renderAI();
+  };
+}
+
+/* ---- remote setup wizard: press each button once, the app binds whatever signal arrives ---- */
+const WIZ_STEPS = [
+  { id: 'prev', title: '이전 버튼', desc: '리모컨(링)의 이전 버튼을 한 번 누르세요' },
+  { id: 'next', title: '다음 버튼', desc: '이번에는 다음 버튼을 한 번 누르세요' },
+  { id: 'play', title: '읽기 버튼', desc: '현재 문장을 다시 읽을 버튼(링은 가운데 버튼)을 한 번 누르세요' },
+];
+const wizard = { step: 0, got: {}, dup: '' };
+function renderWizard() {
+  document.body.classList.add('swipe-lock'); setVolumeCapture(true);
+  const done = wizard.step >= WIZ_STEPS.length; const st = WIZ_STEPS[wizard.step];
+  state.learning = done ? null : st.id;
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="뒤로">${ICON.back}</button>`, title: brand(), right: `<span class="mono rec-count"><b>${Math.min(wizard.step + 1, 3)}</b>/3</span>` })}
+    <main class="view" style="touch-action:none">
+      <div class="eyebrow">리모컨 설정</div>
+      ${done ? `
+        <h1 class="wiz-title">설정이 끝났습니다</h1>
+        <p class="hint">버튼마다 아래 신호로 연결했습니다. 발표 화면에서 바로 써 보세요.</p>
+        <div class="panel stack">${WIZ_STEPS.map((x) => `<div class="row between"><span>${x.title}</span><span class="key ${wizard.got[x.id] ? 'lit' : ''}">${esc(wizard.got[x.id] ? keyName(wizard.got[x.id]) : '건너뜀')}</span></div>`).join('')}</div>
+        <div class="row"><button class="btn grow" id="wizAgain">처음부터 다시</button><button class="btn lamp grow" id="wizDone">발표 화면으로</button></div>
+      ` : `
+        <h1 class="wiz-title">${st.title}</h1>
+        <p class="wiz-desc">${st.desc}</p>
+        <div class="wiz-wait"><i class="led now blink"></i><span class="learn-note">신호를 기다리는 중…</span></div>
+        ${wizard.dup ? `<p class="hint warn-text">${esc(wizard.dup)}</p>` : ''}
+        <div class="stack" style="margin-top:auto">
+          <div class="panel">${WIZ_STEPS.map((x, i) => `<div class="row between wiz-row ${i === wizard.step ? 'cur' : ''}"><span>${x.title}</span><span class="key ${wizard.got[x.id] ? 'lit' : 'x'}">${esc(wizard.got[x.id] ? keyName(wizard.got[x.id]) : i < wizard.step ? '건너뜀' : '·')}</span></div>`).join('')}</div>
+          <div class="row"><button class="btn small ghost" id="wizSkip">이 버튼 건너뛰기</button><span class="hint grow">손가락으로 화면을 건드리면 그 터치가 잡힐 수 있으니 리모컨만 눌러 주세요.</span></div>
+        </div>
+      `}
+    </main>`;
+  $('#back').onclick = () => { state.learning = null; history.length > 1 ? history.back() : go('/'); };
+  if (done) { $('#wizAgain').onclick = () => { wizard.step = 0; wizard.got = {}; wizard.dup = ''; renderWizard(); }; $('#wizDone').onclick = () => { const s = current(); go(s ? '/stage/' + s.id : '/'); }; }
+  else $('#wizSkip').onclick = () => { wizard.step++; wizard.dup = ''; renderWizard(); };
+  media.start();
+}
+function wizardDuplicate(id, key, otherId) {
+  wizard.dup = `"${keyName(key)}"는 이미 ${ACTION_LABEL[otherId]} 버튼의 신호입니다. 두 버튼이 같은 신호를 보내고 있어 구분할 수 없습니다. 링의 모드를 바꾸거나 다른 버튼을 눌러 보세요. (마지막 신호: ${esc(lastGestureInfo)})`;
+  renderWizard();
+}
+function wizardLearned(id, key) {
+  wizard.got[id] = key; wizard.dup = ''; wizard.step++;
+  if (navigator.vibrate) navigator.vibrate(30);
+  renderWizard();
+}
+
+/* ---- remote diagnostics: every raw input, in order, so an unknown remote can be understood ---- */
+const diag = { rows: [], t0: 0, moves: 0 };
+function diagLog(text) {
+  if (state.view !== 'diag') return;
+  if (!diag.t0) diag.t0 = performance.now();
+  diag.rows.unshift(`${((performance.now() - diag.t0) / 1000).toFixed(2).padStart(6)}s  ${text}`);
+  diag.rows.length = Math.min(diag.rows.length, 80);
+  const el = $('#diagList'); if (el) el.textContent = diag.rows.join('\n');
+}
+function renderDiag() {
+  document.body.classList.add('swipe-lock'); setVolumeCapture(true);
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="뒤로">${ICON.back}</button>`, title: brand(), right: '' })}
+    <main class="view" style="touch-action:none">
+      <h2>리모컨 진단</h2>
+      <p class="hint">리모컨 버튼을 하나씩 눌러 보세요. 들어오는 모든 신호가 시간순(최신이 위)으로 기록됩니다. 화면을 캡처해서 보내 주시면 됩니다. 이 화면에서는 손가락 터치도 그대로 기록됩니다.</p>
+      <div class="row"><button class="btn small" id="diagClear">지우기</button><button class="btn small" id="diagCopy">복사</button><span class="hint grow" id="diagNote"></span></div>
+      <pre class="diag-list" id="diagList">${esc(diag.rows.join('\n')) || '아직 신호가 없습니다'}</pre>
+    </main>`;
+  $('#back').onclick = () => history.length > 1 ? history.back() : go('/');
+  $('#diagClear').onclick = () => { diag.rows = []; diag.t0 = 0; $('#diagList').textContent = '아직 신호가 없습니다'; };
+  $('#diagCopy').onclick = async () => { try { await navigator.clipboard.writeText(diag.rows.slice().reverse().join('\n')); toast('복사했습니다'); } catch { toast('복사할 수 없습니다. 화면을 캡처해 주세요'); } };
+  media.start();
+}
+(function attachDiag() {
+  const pos = (e) => { const t = (e.changedTouches && e.changedTouches[0]) || e; return `${Math.round(t.clientX)},${Math.round(t.clientY)}`; };
+  window.addEventListener('keydown', (e) => diagLog(`keydown  key=${e.key} code=${e.code} keyCode=${e.keyCode}${e.repeat ? ' repeat' : ''}`), true);
+  window.addEventListener('keyup', (e) => diagLog(`keyup    key=${e.key} code=${e.code} keyCode=${e.keyCode}`), true);
+  window.addEventListener('pointerdown', (e) => diagLog(`pointer↓ ${e.pointerType} button=${e.button} at ${pos(e)}`), true);
+  window.addEventListener('pointerup', (e) => diagLog(`pointer↑ ${e.pointerType} at ${pos(e)}`), true);
+  window.addEventListener('pointercancel', (e) => diagLog(`pointer✕ ${e.pointerType} at ${pos(e)}`), true);
+  let ts = null;
+  window.addEventListener('touchstart', (e) => { ts = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY, t: performance.now(), n: 0 }; diagLog(`touch↓   at ${pos(e)} fingers=${e.touches.length}`); }, { capture: true, passive: true });
+  window.addEventListener('touchmove', (e) => { if (ts) ts.n++; }, { capture: true, passive: true });
+  const endT = (e, kind) => { if (!ts) { diagLog(`${kind} (시작 없음)`); return; } const t = e.changedTouches[0]; diagLog(`${kind} at ${pos(e)}  이동 dx=${Math.round(t.clientX - ts.x)} dy=${Math.round(t.clientY - ts.y)}  ${Math.round(performance.now() - ts.t)}ms  move=${ts.n}회`); ts = null; };
+  window.addEventListener('touchend', (e) => endT(e, 'touch↑  '), { capture: true, passive: true });
+  window.addEventListener('touchcancel', (e) => endT(e, 'touch✕  '), { capture: true, passive: true });
+  window.addEventListener('wheel', (e) => diagLog(`wheel    dy=${Math.round(e.deltaY)} dx=${Math.round(e.deltaX)}`), { capture: true, passive: true });
+  window.addEventListener('scroll', (e) => diagLog(`scroll   ${e.target === document ? 'page' : (e.target.id || e.target.className || 'el')}`), true);
+  window.addEventListener('contextmenu', (e) => diagLog('contextmenu (길게 누름)'), true);
+})();
+
+/* ---- stage ---- */
+function applyFontSize() { document.documentElement.style.setProperty('--script-size', clamp(settings.fontSize || 18, 12, 40) + 'px'); }
+function renderStage() {
+  const s = current();
+  app.classList.add('stage-app'); applyFontSize(); setVolumeCapture(true);
+  const gestureKeys = ['Swipe↑', 'Swipe↓', 'Swipe←', 'Swipe→', 'Tap', 'DoubleTap'];
+  document.body.classList.toggle('swipe-lock', gestureKeys.some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))));
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: `<button class="btn icon ghost" id="settings" aria-label="설정">${ICON.gear}</button>` })}
+    <main class="view stage ${['Swipe↑', 'Swipe↓', 'Swipe←', 'Swipe→', 'Tap', 'DoubleTap'].some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))) ? 'swipe-mode' : ''}" id="stage" tabindex="0">
+      <div class="stage-head">
+        <span id="elapsed">00:00</span>
+        <span class="counter"><span id="cur">01</span><small>/ ${String(s.sentences.length).padStart(2, '0')}</small></span>
+        <span id="keyflash" class="key x" aria-label="마지막 리모컨 신호">·</span>
+      </div>
+      <div class="lyrics" id="lyrics">
+        <div class="ly-list" id="lyList"><div class="ly-pad"></div>${s.sentences.map((x, k) => `<div class="ly" data-k="${k}"><span class="n">${k + 1}</span><div class="text">${esc(x.text) || '<span class="dim">…</span>'}</div></div>`).join('')}<div class="ly-pad"></div></div>
+        <div class="ly-foot"><div class="tag"><i class="led now" id="ledNow"></i><span id="lyLabel">지금</span><span class="n" id="lyNum"></span></div>
+          <div class="track" aria-hidden="true"><div class="fill" id="fill"></div><div class="thumb" id="thumb"></div></div></div>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="transport">
+        <button class="btn" id="prev" aria-label="이전 문장 다시 읽기">${ICON.prev}이전</button>
+        <button class="btn" id="play" aria-label="현재 문장 읽기">${ICON.play}읽기</button>
+        <button class="btn lamp" id="next" aria-label="다음 문장 읽기">다음${ICON.next}</button>
+      </div>
+      <div class="deck">
+        <div class="knob-wrap">
+          <div class="knob" id="knob" role="slider" aria-label="읽기 속도" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${settings.rate}" tabindex="0">
+            <div class="ticks">${KNOB_TICKS.map((r) => `<i class="${Number.isInteger(r * 2) ? 'major' : ''}" style="transform:rotate(${rateToAngle(r)}deg)"></i>`).join('')}</div>
+            <div class="labels">${[1, 1.5, 2, 3, 5].map((r) => `<span style="transform:rotate(${rateToAngle(r)}deg)"><b style="transform:rotate(${-rateToAngle(r)}deg)">${r}</b></span>`).join('')}</div>
+            <div class="cap" id="cap"></div>
+          </div>
+          <div class="knob-readout"><button class="btn" id="rateDown" aria-label="느리게">−</button><span class="val" id="rateVal"></span><button class="btn" id="rateUp" aria-label="빠르게">+</button></div>
+          <div class="knob-label">속도 · 2×까지 0.05씩</div>
+        </div>
+        <div class="switches">
+          <button class="switch" role="switch" id="swAuto" aria-checked="${settings.auto}"><span class="label"><span>자동 진행</span><small>말 끝나기 <b class="mono" id="leadLbl">${settings.lead}</b>초 전에 다음</small></span><span class="rocker"></span></button>
+          <button class="switch" role="switch" id="swListen" aria-checked="${settings.listen}"><span class="label"><span>말 인식</span><small>문장을 말하면 다음으로</small></span><span class="rocker"></span></button>
+        </div>
+      </div>
+      <div class="remote-line"><span>리모컨</span>${keyHints()}</div>
+    </main>
+    <div class="sheet-bg" id="sheetBg" hidden></div>
+    <div class="sheet" id="sheet" hidden></div>`;
+  $('#back').onclick = () => go('/edit/' + s.id);
+  $('#settings').onclick = () => openSheet();
+  $('#sheetBg').onclick = () => closeSheet();
+  $('#prev').onclick = () => act('prev');
+  $('#play').onclick = () => act('play');
+  $('#next').onclick = () => act('next');
+  $('#rateDown').onclick = () => nudgeRate(-1);
+  $('#rateUp').onclick = () => nudgeRate(1);
+  $('#swAuto').onclick = () => { settings.auto = !settings.auto; saveSettings(); $('#swAuto').setAttribute('aria-checked', settings.auto); if (!settings.auto) cancelAuto(); renderStageStatus(); };
+  $('#swListen').onclick = () => toggleListen();
+  bindKnob();
+  setRate(settings.rate, true);
+  updateCue();
+  renderStageStatus();
+  if (settings.listen) toggleListen(true);
+  requestWakeLock();
+  setTimeout(() => $('#stage').focus({ preventScroll: true }), 50);
+  tickElapsed();
+}
+
+function keyHints(playLabel = '읽기') {
+  const km = settings.keymap;
+  const show = (arr) => arr.slice(0, 2).map((k) => `<span class="key">${esc(keyName(k))}</span>`).join(' ');
+  return `${show(km.next)} 다음 <span class="sep">·</span> ${show(km.prev)} 이전 <span class="sep">·</span> ${show(km.play)} ${playLabel}`;
+}
+function keyName(k) { return ({ 'VolumeUp': '볼륨↑', 'VolumeDown': '볼륨↓', 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Swipe←': '왼쪽으로 쓸기', 'Swipe→': '오른쪽으로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
+
+/* The stage is a scrolling script: every line the same size, the current one in neon green.
+   On advance the list scrolls so the current line sits at the centre of the block; it can also be scrolled by hand. */
+function updateCue() {
+  const s = current(); if (!s || state.view !== 'stage') return;
+  const i = state.idx; const n = s.sentences.length;
+  $('#cur').textContent = String(i + 1).padStart(2, '0');
+  const list = $('#lyList'); if (!list) return;
+  const items = list.querySelectorAll('.ly');
+  for (let k = 0; k < items.length; k++) items[k].className = 'ly' + (k === i ? ' now' : k < i ? ' before' : ' after');
+  const cur = items[i]; if (cur) {
+    const top = cur.offsetTop + cur.offsetHeight / 2 - (list.clientHeight - 64) / 2;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    list.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
+  }
+  $('#lyLabel').textContent = i === n - 1 ? '마지막 문장' : '지금'; $('#lyNum').textContent = i + 1;
+  setProgress(0);
+  $('#next').disabled = false;
+}
+function setProgress(p) {
+  state.progress = p; const f = $('#fill'), t = $('#thumb'); if (!f) return;
+  f.style.width = (p * 100) + '%'; t.style.left = (p * 100) + '%';
+}
+function renderStageStatus() {
+  const el = $('#status'); if (!el) return;
+  const chips = [];
+  const sp = isSpeaking();
+  chips.push(`<span class="chip ${sp ? 'on' : ''}"><i class="led ${sp ? 'lamp' : ''}"></i>${sp ? (state.usingRec === 'ai' ? 'AI 내 목소리' : state.usingRec ? '내 목소리' : '읽는 중') : '대기'}</span>`);
+  if (state.recMissing) chips.push(`<span class="chip"><i class="led"></i>녹음 없음 · 기기 음성</span>`);
+  if (settings.auto) chips.push(`<span class="chip on" id="autoChip"><i class="led lamp ${state.autoDue ? 'blink' : ''}"></i>자동 <span id="autoCount">${state.autoDue ? ((state.autoDue - performance.now()) / 1000).toFixed(1) + 's' : settings.lead + 's'}</span></span>`);
+  if (settings.listen) chips.push(`<span class="chip on"><i class="led ${listener.on && !listener.suspended ? 'next' : ''}"></i>말 인식 ${!listener.on ? '꺼짐' : listener.suspended ? '대기' : '듣는 중'}</span>`);
+  if (media.ready) chips.push(`<span class="chip"><i class="led lamp"></i>미디어 키 대기</span>`);
+  if (state.lastSignal) chips.push(`<span class="chip on"><i class="led next"></i>${esc(state.lastSignal)}</span>`);
+  if (state.ttsNote) chips.push(`<span class="chip warn">${esc(state.ttsNote)}</span>`);
+  el.innerHTML = chips.join('');
+  const led = $('#ledNow'); if (led) led.classList.toggle('blink', sp);
+  const box = $('#lyrics'); if (box) box.classList.toggle('speaking', sp);
+}
+function tickElapsed() {
+  if (state.view !== 'stage') return;
+  const el = $('#elapsed'); if (el) el.textContent = state.startedAt ? fmtTime(performance.now() - state.startedAt) : '00:00';
+  const ac = $('#autoCount'); if (ac && state.autoDue) ac.textContent = Math.max(0, (state.autoDue - performance.now()) / 1000).toFixed(1) + 's';
+  setTimeout(tickElapsed, 200);
+}
+
+/* transport actions */
+function act(kind) {
+  const s = current(); if (!s || state.view !== 'stage') return;
+  cancelAuto(); state.ttsNote = '';
+  if (kind === 'next') { if (state.idx >= s.sentences.length - 1) { finishTalk(); return; } state.idx++; }
+  if (kind === 'prev') { state.idx = Math.max(0, state.idx - 1); }
+  updateCue(); speakCurrent();
+  flashButton(kind);
+}
+function flashButton(kind) { const b = $('#' + kind); if (!b) return; b.classList.add('is-down'); setTimeout(() => b.classList.remove('is-down'), 140); }
+function speakCurrent() {
+  const s = current(); const text = s.sentences[state.idx].text.trim();
+  if (!state.startedAt) state.startedAt = performance.now();
+  listener.mark(); listener.suspend();
+  if (!text) { setProgress(1); listener.resume(); return; }
+  speakSentence(s.sentences[state.idx], {
+    onStart: () => { state.speakT0 = performance.now(); renderStageStatus(); },
+    onProgress: setProgress,
+    onEnd: ({ cancelled, dur, rate }) => {
+      if (cancelled) { if (tts.lastError && tts.lastError !== 'canceled') { state.ttsNote = '읽기 중단: ' + tts.lastError; renderStageStatus(); } return; }
+      state.ttsNote = tts.lastError ? '읽기 오류: ' + tts.lastError : '';
+      setProgress(1); listener.resume(); renderStageStatus();
+      if (settings.auto && state.idx < s.sentences.length - 1) scheduleAuto(dur, rate);
+    },
+  });
+}
+function finishTalk() {
+  stopVoice(); listener.stop();
+  const s = current();
+  $('#stage').innerHTML = `
+    <div class="done-card"><div class="big">발표가 끝났습니다</div><p class="muted">${s.sentences.length}문장 · ${fmtTime(performance.now() - state.startedAt)}</p></div>
+    <div class="row" style="margin-top:16px"><button class="btn grow" id="again">처음부터</button><button class="btn lamp grow" id="home">대본 목록</button></div>`;
+  $('#again').onclick = () => { state.idx = 0; state.startedAt = 0; renderStage(); };
+  $('#home').onclick = () => go('/');
+}
+
+/* ---- record view: the presenter reads each sentence once, in their own voice ---- */
+function renderRecord() {
+  const s = current(); const n = s.sentences.length; const i = state.idx = clamp(state.idx, 0, n - 1);
+  const sent = s.sentences[i]; const r = recs.get(sent.id); const done = s.sentences.filter((x) => recs.has(x.id)).length;
+  const on = state.recording;
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: `<span class="mono rec-count"><b>${done}</b>/${n} 녹음</span>` })}
+    <main class="view stage" id="stage" tabindex="0">
+      <div class="stage-head">
+        <span id="recTime">${r && !on ? fmtSec(r.duration) : '00:00'}</span>
+        <span class="counter"><span>${String(i + 1).padStart(2, '0')}</span><small>/ ${String(n).padStart(2, '0')}</small></span>
+        <span id="keyflash" class="key x" aria-label="마지막 리모컨 신호">·</span>
+      </div>
+      <div class="cue now">
+        <div class="tag"><i class="led ${on ? 'now blink' : r ? 'next' : ''}"></i><span>${on ? '녹음 중' : r ? '내 목소리 녹음 있음' : '아직 녹음 없음'}</span></div>
+        <div class="text">${esc(sent.text) || '<span class="dim">빈 문장</span>'}</div>
+        <div class="track" aria-hidden="true"><div class="fill" id="vu"></div></div>
+      </div>
+      <p class="hint center">${on ? '평소 발표하듯 읽고, 끝나면 정지를 누르세요.' : '가운데 버튼을 누르고 이 문장을 평소 발표하듯 읽으세요. 정지를 누르면 저장되고 다음 문장으로 넘어갑니다.'}</p>
+      <div class="transport">
+        <button class="btn" id="rPrev" ${i === 0 ? 'disabled' : ''}>${ICON.prev}이전</button>
+        <button class="btn ${on ? 'rec-on' : 'lamp'}" id="rToggle">${on ? ICON.stop + '정지' : ICON.rec + (r ? '다시 녹음' : '녹음')}</button>
+        <button class="btn" id="rNext" ${i === n - 1 ? 'disabled' : ''}>다음${ICON.next}</button>
+      </div>
+      <div class="row center-row">
+        <button class="btn small" id="rPlay" ${r && !on ? '' : 'disabled'}>${ICON.play}들어보기</button>
+        <button class="btn small ghost danger" id="rDel" ${r && !on ? '' : 'disabled'}>${ICON.trash}이 녹음 삭제</button>
+      </div>
+      <div class="switches bottom">
+        <button class="switch" role="switch" id="swAdvance" aria-checked="${settings.recAdvance}"><span class="label"><span>정지하면 다음 문장으로</span><small>연속으로 빠르게 녹음할 때 켜 두세요</small></span><span class="rocker"></span></button>
+      </div>
+      <div class="remote-line"><span>리모컨</span>${keyHints('녹음/정지')}</div>
+    </main>`;
+  $('#back').onclick = () => go('/edit/' + s.id);
+  $('#rToggle').onclick = toggleRecording;
+  $('#rPrev').onclick = () => moveRecord(-1);
+  $('#rNext').onclick = () => moveRecord(1);
+  $('#rPlay').onclick = () => { const rr = recs.get(sent.id); if (rr) recPlayer.play(rr, { onProgress: (p) => { const v = $('#vu'); if (v) v.style.width = (p * 100) + '%'; }, onEnd: () => { const v = $('#vu'); if (v) v.style.width = '0%'; } }); };
+  $('#rDel').onclick = async () => { await removeRec(s, sent.id); renderRecord(); };
+  $('#swAdvance').onclick = () => { settings.recAdvance = !settings.recAdvance; saveSettings(); $('#swAdvance').setAttribute('aria-checked', settings.recAdvance); };
+  recorder.onLevel = (lv) => { const v = $('#vu'); if (v && state.recording) v.style.width = Math.round(lv * 100) + '%'; };
+  requestWakeLock();
+  setTimeout(() => { const st = $('#stage'); if (st) st.focus({ preventScroll: true }); }, 50);
+  tickRecTime();
+}
+function tickRecTime() {
+  if (state.view !== 'record') return;
+  if (state.recording) { const el = $('#recTime'); if (el) el.textContent = fmtTime(performance.now() - recorder.t0); }
+  setTimeout(tickRecTime, 200);
+}
+async function toggleRecording() {
+  const s = current(); if (!s || state.view !== 'record') return;
+  if (state.recording) {
+    const take = await recorder.stop(); state.recording = false;
+    if (take) {
+      if (await saveRec(s, s.sentences[state.idx].id, take)) {
+        if (settings.recAdvance && state.idx < s.sentences.length - 1) { state.idx++; renderRecord(); return; }
+        if (settings.recAdvance) toast('마지막 문장까지 녹음했습니다');
+      }
+    } else toast('너무 짧아서 저장하지 않았습니다');
+    renderRecord(); return;
+  }
+  stopVoice();
+  if (await recorder.start()) { state.recording = true; renderRecord(); }
+}
+async function moveRecord(dir) {
+  const s = current(); if (!s) return;
+  if (state.recording) { const take = await recorder.stop(); state.recording = false; if (take) await saveRec(s, s.sentences[state.idx].id, take); }
+  stopVoice();
+  state.idx = clamp(state.idx + dir, 0, s.sentences.length - 1); renderRecord();
+}
+
+/* auto advance: the earpiece read at N× took `dur`; the presenter saying it aloud at 1× takes about dur×N.
+   Start the next sentence `lead` seconds before that natural end, measured from when the read began. */
+function scheduleAuto(dur, rate) {
+  const natural = dur * rate; // a recording's natural length is exactly what the presenter takes to say it
+  const due = (state.speakT0 || performance.now() - dur) + natural - settings.lead * 1000;
+  const delay = Math.max(0, due - performance.now());
+  state.autoDue = performance.now() + delay;
+  renderStageStatus();
+  state.autoTimer = setTimeout(() => { state.autoDue = 0; act('next'); }, delay);
+}
+function cancelAuto() { clearTimeout(state.autoTimer); state.autoTimer = 0; state.autoDue = 0; }
+
+/* listen mode */
+function toggleListen(force) {
+  const want = force === true ? true : !settings.listen;
+  if (want) {
+    if (!listener.start()) { settings.listen = false; }
+    else { settings.listen = true; listener.onMatch = onHeard; if (force !== true) toast('마이크로 발표자의 말을 듣습니다'); }
+  } else { listener.stop(); settings.listen = false; }
+  saveSettings();
+  const sw = $('#swListen'); if (sw) sw.setAttribute('aria-checked', settings.listen);
+  renderStageStatus();
+}
+function onHeard(heard) {
+  const s = current(); if (!s || state.view !== 'stage') return;
+  if (isSpeaking()) return;
+  const score = tailMatch(s.sentences[state.idx].text, heard);
+  if (score >= 0.7) { listener.heard = ''; act('next'); }
+}
+
+/* rate knob */
+/* Non-linear speed scale: the first half of the knob's travel covers 1.0–2.0× in fine 0.05 steps
+   (where the ear can still follow), the second half covers 2.0–5.0× in 0.25 steps. */
+const KNOB_TICKS = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+const rateToPos = (r) => r <= 2 ? (r - 1) / 2 : 0.5 + (r - 2) / 6;
+const posToRate = (p) => p <= 0.5 ? 1 + p * 2 : 2 + (p - 0.5) * 6;
+const rateToAngle = (r) => -135 + rateToPos(clamp(r, 1, 5)) * 270;
+function snapRate(r) { const step = r <= 2 ? 0.05 : 0.25; return Math.round(clamp(r, 1, 5) / step) * step; }
+function nudgeRate(dir) { const r = settings.rate; const step = (dir > 0 ? r < 2 : r <= 2) ? 0.05 : 0.25; setRate(snapRate(r + dir * step)); }
+function setRate(r, silent) {
+  settings.rate = Math.round(clamp(r, 1, 5) * 100) / 100; saveSettings();
+  const cap = $('#cap'), val = $('#rateVal'), knob = $('#knob'); if (!cap) return;
+  cap.style.transform = `rotate(${rateToAngle(settings.rate)}deg)`;
+  val.textContent = settings.rate.toFixed(2) + '×';
+  knob.setAttribute('aria-valuenow', settings.rate);
+  if (!silent && tts.utter) { /* rate changes apply from the next sentence */ }
+}
+function bindKnob() {
+  const knob = $('#knob'); let dragging = false, lastAngle = 0;
+  const angleOf = (e) => { const r = knob.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI; };
+  knob.addEventListener('pointerdown', (e) => { dragging = true; lastAngle = angleOf(e); knob.setPointerCapture(e.pointerId); });
+  knob.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const a = angleOf(e); let d = a - lastAngle; if (d > 180) d -= 360; if (d < -180) d += 360; lastAngle = a;
+    setRate(posToRate(clamp(rateToPos(settings.rate) + d / 270, 0, 1)));
+  });
+  ['pointerup', 'pointercancel'].forEach((ev) => knob.addEventListener(ev, () => { dragging = false; setRate(snapRate(settings.rate)); }));
+  knob.addEventListener('wheel', (e) => { e.preventDefault(); nudgeRate(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  knob.addEventListener('keydown', (e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); nudgeRate(1); } if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); nudgeRate(-1); } });
+}
+
+/* ---------------- settings sheet ---------------- */
+function openSheet() { sheetOpen = true; const bg = $('#sheetBg'), sh = $('#sheet'); bg.hidden = sh.hidden = false; renderSheet(); requestAnimationFrame(() => { bg.classList.add('open'); sh.classList.add('open'); }); }
+function closeSheet(now) {
+  sheetOpen = false; state.learning = null;
+  const bg = $('#sheetBg'), sh = $('#sheet'); if (!bg) return;
+  bg.classList.remove('open'); sh.classList.remove('open');
+  const hide = () => { bg.hidden = sh.hidden = true; };
+  now ? hide() : setTimeout(hide, 260);
+  const st = $('#stage'); if (st) st.focus({ preventScroll: true });
+}
+function renderSheet() {
+  const sh = $('#sheet'); if (!sh) return;
+  const ko = voices.filter((v) => /^ko/i.test(v.lang)); const others = voices.filter((v) => !/^ko/i.test(v.lang));
+  const opt = (v) => `<option value="${esc(v.voiceURI)}" ${v.voiceURI === (pickVoice() || {}).voiceURI ? 'selected' : ''}>${esc(v.name)} (${esc(v.lang)})</option>`;
+  const km = settings.keymap;
+  const keyRow = (id, label) => `<div class="keymap-row"><span>${label}</span><div class="keys">${km[id].length ? km[id].map((k) => `<span class="k"><span class="key">${esc(keyName(k))}</span><button data-unkey="${id}:${esc(k)}" aria-label="${esc(keyName(k))} 삭제">×</button></span>`).join('') : '<span class="empty-keys">연결된 버튼 없음</span>'}</div>
+    ${state.learning === id ? '<span class="learn-note">버튼을 누르세요…</span>' : `<button class="btn small" data-learn="${id}">배우기</button>`}</div>`;
+  sh.innerHTML = `
+    <div class="grip"></div>
+    <h2>음성</h2>
+    <div class="seg" role="radiogroup" aria-label="음성 소스">
+      <button role="radio" aria-checked="${settings.voiceSource === 'mine'}" data-src="mine">${ICON.mic}내 목소리</button>
+      <button role="radio" aria-checked="${settings.voiceSource === 'tts'}" data-src="tts">${ICON.speaker}기기 음성</button>
+    </div>
+    <p class="hint">${recs.size ? `${recs.size}/${current().sentences.length}문장에 녹음이 있습니다. 녹음이 없는 문장은 기기 음성으로 읽습니다.` : '아직 녹음이 없습니다. 편집 화면의 "내 목소리 녹음"에서 문장을 녹음하세요.'}</p>
+    <div class="setting"><div class="label">기기 음성 목소리<small>${voices.length ? `${ko.length}개 한국어 음성` : '음성 목록을 불러오는 중'}</small></div></div>
+    <div class="select-wrap"><select class="field" id="voice">${ko.map(opt).join('')}${others.length ? '<optgroup label="다른 언어">' + others.map(opt).join('') + '</optgroup>' : ''}</select></div>
+    <div class="setting" style="margin-top:6px"><div class="label">미리 듣기<small>현재 속도 ${settings.rate}×</small></div><button class="btn small" id="testVoice">${ICON.speaker}테스트</button></div>
+    <h2>화면</h2>
+    <div class="setting"><div class="label">대본 글자 크기<small>발표 화면의 문장 글씨</small></div>
+      <div class="stepper"><button class="btn" id="fontDown" aria-label="작게">−</button><span class="val" id="fontVal">${settings.fontSize || 18}px</span><button class="btn" id="fontUp" aria-label="크게">+</button></div></div>
+    <h2>자동 진행</h2>
+    <div class="setting"><div class="label">다음 문장 시작 시점<small>내 말이 끝나기 몇 초 전에 다음 문장을 들려줄지</small></div>
+      <div class="stepper"><button class="btn" id="leadDown">−</button><span class="val" id="leadVal">${settings.lead.toFixed(1)}s</span><button class="btn" id="leadUp">+</button></div></div>
+    <p class="hint">읽어준 시간과 속도로 실제 말하는 시간을 추정합니다. 몇 문장 지나면 더 정확해집니다.</p>
+    <h2>리모컨 버튼</h2>
+    <button class="btn lamp" id="openWizard" style="width:100%">리모컨 설정 마법사 (버튼 3개 누르기)</button>
+    ${keyRow('next', '다음')}${keyRow('prev', '이전')}${keyRow('play', '읽기')}
+    <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기·탭(쇼츠 모드 링 리모컨), 게임패드 신호를 모두 받습니다. 링 리모컨은 기본값으로 위로 쓸기 = 다음, 아래로 쓸기 = 이전, 가운데 탭 = 읽기입니다. ${NATIVE ? '앱에서는 볼륨 키(링 길게 누르기)도 버튼으로 배울 수 있습니다.' : '길게 누르기(볼륨·화면 잠금)는 브라우저가 받지 못합니다.'} 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
+    <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><span class="row"><button class="btn small" id="openDiag">진단 화면</button><button class="btn ghost small" id="resetKeys">기본값으로</button></span></div>
+    <div class="sig-mon" id="sigMon">${signalMonitor()}</div>
+    <div class="row" style="margin-top:18px"><button class="btn lamp grow" id="closeSheet">닫기</button></div>`;
+  $('#voice').onchange = (e) => { settings.voiceURI = e.target.value; saveSettings(); };
+  sh.querySelectorAll('[data-src]').forEach((b) => b.onclick = () => { settings.voiceSource = b.dataset.src; saveSettings(); renderSheet(); });
+  $('#testVoice').onclick = () => tts.speak('안녕하세요. 이 속도로 대본을 읽어 드립니다.');
+  const setFont = (d) => { settings.fontSize = clamp((settings.fontSize || 18) + d, 12, 40); saveSettings(); $('#fontVal').textContent = settings.fontSize + 'px'; applyFontSize(); updateCue(); };
+  $('#fontDown').onclick = () => setFont(-1); $('#fontUp').onclick = () => setFont(1);
+  $('#leadDown').onclick = () => { settings.lead = clamp(settings.lead - 0.5, 0, 10); saveSettings(); $('#leadVal').textContent = settings.lead.toFixed(1) + 's'; $('#leadLbl').textContent = settings.lead; };
+  $('#leadUp').onclick = () => { settings.lead = clamp(settings.lead + 0.5, 0, 10); saveSettings(); $('#leadVal').textContent = settings.lead.toFixed(1) + 's'; $('#leadLbl').textContent = settings.lead; };
+  sh.querySelectorAll('[data-learn]').forEach((b) => b.onclick = () => { state.learning = b.dataset.learn; renderSheet(); });
+  sh.querySelectorAll('[data-unkey]').forEach((b) => b.onclick = () => { const [id, k] = b.dataset.unkey.split(/:(.*)/); settings.keymap[id] = settings.keymap[id].filter((x) => x !== k); saveSettings(); renderSheet(); });
+  $('#openDiag').onclick = () => { closeSheet(true); go('/diag'); };
+  $('#openWizard').onclick = () => { closeSheet(true); go('/setup'); };
+  $('#resetKeys').onclick = () => { settings.keymap = JSON.parse(JSON.stringify(DEFAULT_KEYMAP)); saveSettings(); renderSheet(); };
+  $('#closeSheet').onclick = () => { closeSheet(); renderStage(); };
+}
+
+/* ---------------- keyboard / remote ----------------
+   Presentation remotes reach the page as keyboard keys, but some Android builds hand over an empty key name
+   or only a scroll gesture. Every input path is folded into one "signal" so the learn mode and the keymap
+   can use whichever the remote actually sends. */
+const inputView = () => state.view === 'stage' || state.view === 'record' || state.view === 'setup';
+const KEYCODE_MAP = { 33: 'PageUp', 34: 'PageDown', 37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 32: ' ', 13: 'Enter', 27: 'Escape', 116: 'F5', 190: '.', 66: 'b', 9: 'Tab' };
+function keyFromEvent(e) {
+  let k = e.key;
+  if (!k || k === 'Unidentified' || k === 'Dead' || k === 'Process') k = KEYCODE_MAP[e.keyCode] || e.code || '';
+  return k;
+}
+state.signals = [];
+function logSignal(type, key, e) {
+  state.signals.unshift({ type, key, code: e.code || (e.pointerType ? e.pointerType : ''), keyCode: e.keyCode || 0, t: Date.now() });
+  state.signals.length = Math.min(state.signals.length, 6);
+  const mon = $('#sigMon'); if (mon) mon.innerHTML = signalMonitor();
+}
+function signalMonitor() {
+  if (!state.signals.length) return '<span class="dim">아직 받은 신호가 없습니다. 리모컨 버튼을 눌러 보세요. 키보드·휠·마우스 클릭·스크롤·게임패드 신호를 모두 표시합니다.</span>';
+  return state.signals.map((x) => `<span class="sig"><span class="key">${esc(keyName(x.key) || '?')}</span><span class="dim">${x.type}${x.code ? ' · ' + esc(x.code) : ''}${x.keyCode ? ' · #' + x.keyCode : ''}</span></span>`).join('');
+}
+const ACTION_LABEL = { next: '다음', prev: '이전', play: '읽기' };
+let lastKeyDownAt = 0;
+function handleSignal(key, e) {
+  if (!key) return;
+  if (!inputView()) return;
+  if (state.learning) {
+    e.preventDefault();
+    const id = state.learning; const km = settings.keymap;
+    if (state.view === 'setup') { const other = Object.entries(wizard.got).find(([k, v]) => k !== id && v === key); if (other) { wizardDuplicate(id, key, other[0]); return; } }
+    for (const k of Object.keys(km)) km[k] = km[k].filter((x) => x !== key);
+    km[id].unshift(key); saveSettings(); state.lastKey = key; state.learning = null;
+    if (state.view === 'setup') { wizardLearned(id, key); return; }
+    renderSheet(); toast(`"${keyName(key)}" 버튼을 ${ACTION_LABEL[id]}에 연결했습니다`);
+    return;
+  }
+  if (sheetOpen) { if (key === 'Escape') closeSheet(); return; }
+  const tag = (e.target && e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  const km = settings.keymap;
+  const action = km.next.includes(key) ? 'next' : km.prev.includes(key) ? 'prev' : km.play.includes(key) ? 'play' : null;
+  state.lastKey = key; flashKey(key, !!action);
+  state.lastSignal = `${keyName(key)} → ${action ? ACTION_LABEL[action] : '연결 안 됨'}`; renderStageStatus();
+  if (!action) return;
+  e.preventDefault(); if (e.repeat) return;
+  if (state.view === 'record') { flashButton({ next: 'rNext', prev: 'rPrev', play: 'rToggle' }[action]); if (action === 'play') toggleRecording(); else moveRecord(action === 'next' ? 1 : -1); return; }
+  act(action);
+}
+window.addEventListener('keydown', (e) => { const k = keyFromEvent(e); lastKeyDownAt = performance.now(); logSignal('keydown', k, e); handleSignal(k, e); }, true);
+// keys the Android shell captures (volume buttons, media buttons) arrive here
+window.__earNativeKey = (k) => { diagLog(`native   key=${k}`); logSignal('native', k, { code: 'android' }); handleSignal(k, { preventDefault() {}, target: document.body }); };
+function setVolumeCapture(on) { const P = NP('EarKeys'); if (P) P.capture({ volume: !!on }).catch(() => {}); }
+window.addEventListener('keyup', (e) => {
+  const k = keyFromEvent(e); logSignal('keyup', k, e);
+  // a device that never sends keydown still gets handled on keyup
+  if (performance.now() - lastKeyDownAt > 600) handleSignal(k, e);
+}, true);
+let lastWheelAt = 0;
+window.addEventListener('wheel', (e) => {
+  if (!inputView()) return;
+  const k = e.deltaY > 0 ? 'Wheel↓' : e.deltaY < 0 ? 'Wheel↑' : '';
+  if (!k) return;
+  const km = settings.keymap; const mapped = state.learning || km.next.includes(k) || km.prev.includes(k) || km.play.includes(k);
+  if (!mapped) return;
+  e.preventDefault();
+  if (performance.now() - lastWheelAt < 400) return; // one press often arrives as several wheel ticks
+  lastWheelAt = performance.now(); logSignal('wheel', k, e); handleSignal(k, e);
+}, { passive: false, capture: true });
+const isMapped = (k) => { const km = settings.keymap; return !!state.learning || km.next.includes(k) || km.prev.includes(k) || km.play.includes(k); };
+/* Remotes in mouse mode: their buttons arrive as mouse clicks, which a phone's finger taps never are. */
+window.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'mouse') { lastTouchAt = performance.now(); return; }
+  if (!inputView()) return;
+  const k = 'Mouse' + e.button; logSignal('mouse', k, e);
+  if (!isMapped(k)) return;
+  if (!state.learning && e.target.closest('button,input,select,textarea,.knob,.sheet')) return; // real mouse use of the UI
+  e.preventDefault(); handleSignal(k, e);
+}, true);
+window.addEventListener('touchstart', () => { lastTouchAt = performance.now(); }, { passive: true, capture: true });
+/* Scrolling that no finger and no wheel caused: the system moved the page for the remote. */
+let lastTouchAt = 0, lastScrollTop = new WeakMap(), lastScrollAt = 0;
+window.addEventListener('scroll', (e) => {
+  if (!inputView()) return;
+  const el = e.target === document ? document.scrollingElement : e.target; if (!el) return;
+  const top = el.scrollTop, prev = lastScrollTop.get(el); lastScrollTop.set(el, top);
+  if (prev === undefined || top === prev) return;
+  if (performance.now() - lastTouchAt < 900 || performance.now() - lastWheelAt < 300) return;
+  const k = top > prev ? 'Scroll↓' : 'Scroll↑';
+  if (performance.now() - lastScrollAt < 500) return; lastScrollAt = performance.now();
+  logSignal('scroll', k, e);
+  if (isMapped(k)) handleSignal(k, e);
+}, true);
+/* Remotes in "music" mode send media keys. Android hands those to whichever page holds an audio session,
+   so a near-silent loop is kept playing while the stage is open (started on the first tap, as browsers require). */
+const media = {
+  el: null, ready: false,
+  start() {
+    if (NATIVE || this.ready || !('mediaSession' in navigator) || !inputView()) return;
+    const a = new Audio(URL.createObjectURL(wavBlob(new Float32Array(4000), 8000))); a.loop = true; a.volume = 0.05; this.el = a;
+    const acts = { nexttrack: 'Media:next', previoustrack: 'Media:prev', seekforward: 'Media:next', seekbackward: 'Media:prev', play: 'Media:play', pause: 'Media:play', stop: 'Media:play' };
+    for (const [action, k] of Object.entries(acts)) {
+      try { navigator.mediaSession.setActionHandler(action, () => { diagLog(`media    ${action}`); logSignal('media', k, { code: action }); handleSignal(k, { preventDefault() {}, target: document.body }); try { navigator.mediaSession.playbackState = 'playing'; } catch {} if (this.el && this.el.paused) this.el.play().catch(() => {}); }); } catch {}
+    }
+    a.play().then(() => { this.ready = true; try { navigator.mediaSession.metadata = new MediaMetadata({ title: '리모컨 대기 중', artist: 'EarCue 이어큐' }); navigator.mediaSession.playbackState = 'playing'; } catch {} renderStageStatus(); }).catch(() => {});
+  },
+  stop() { if (this.el) { this.el.pause(); this.el.removeAttribute('src'); this.el = null; } this.ready = false; try { for (const a of ['nexttrack', 'previoustrack', 'seekforward', 'seekbackward', 'play', 'pause', 'stop']) navigator.mediaSession.setActionHandler(a, null); } catch {} },
+};
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, () => media.start(), { capture: true, passive: true }));
+/* Remotes in "shorts" mode inject finger swipes. Touch events keep firing even when the page scrolls. */
+let swipe = null;
+window.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY, t: performance.now(), target: e.target }; }, { capture: true, passive: true });
+let lastTapAt = 0, lastGestureInfo = '';
+const gestureAllowed = (start) => !!state.learning || (!start.target.closest('.knob .cap, .sheet, .sheet-bg') && !sheetOpen); // a ring injects at the screen centre, wherever that lands
+function judgeSwipe(dx, dy, e, min = 35) {
+  let k = '';
+  if (Math.abs(dy) >= min && Math.abs(dx) <= Math.abs(dy) * 0.8) k = dy < 0 ? 'Swipe↑' : 'Swipe↓';
+  else if (Math.abs(dx) >= min && Math.abs(dy) <= Math.abs(dx) * 0.8) k = dx < 0 ? 'Swipe←' : 'Swipe→';
+  if (!k || !swipe || swipe.done) return false;
+  swipe.done = true; lastGestureInfo = `y ${Math.round(swipe.y)}→${Math.round(swipe.y + dy)}, x ${Math.round(swipe.x)}→${Math.round(swipe.x + dx)}`; logSignal('swipe', k, { code: lastGestureInfo });
+  if (isMapped(k) && gestureAllowed(swipe)) handleSignal(k, { preventDefault() {}, target: swipe.target });
+  else { state.lastSignal = `${keyName(k)} → ${!isMapped(k) ? '연결 안 됨' : '무시됨 (' + (sheetOpen ? '설정 열림' : '노브 위') + ')'}`; renderStageStatus(); }
+  return true;
+}
+// judged while the finger is still moving, so a remote's gesture reacts at once instead of on release
+window.addEventListener('touchmove', (e) => {
+  if (!swipe || swipe.done) return; const t = e.changedTouches[0]; swipe.lx = t.clientX; swipe.ly = t.clientY;
+  if (!inputView()) return;
+  if (performance.now() - swipe.t > 900) return;
+  judgeSwipe(t.clientX - swipe.x, t.clientY - swipe.y, e);
+}, { capture: true, passive: true });
+function endTouch(e, cancelled) {
+  if (!swipe) return; const t = e.changedTouches && e.changedTouches[0]; const start = swipe; swipe = null;
+  const ex = t ? t.clientX : (start.lx ?? start.x), ey = t ? t.clientY : (start.ly ?? start.y);
+  const dx = ex - start.x, dy = ey - start.y, dt = performance.now() - start.t;
+  if (!inputView()) return;
+  if (start.done) return;
+  if (!cancelled && dt < 450 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+    // a short still touch is a tap; a ring's centre button usually injects one (or two) at the screen centre
+    if (start.target.closest('button,input,select,textarea,a,.knob,.switch,.rocker,.seg')) return; // the app's own buttons keep their click behaviour
+    const dbl = performance.now() - lastTapAt < 350; lastTapAt = dbl ? 0 : performance.now();
+    const k = dbl ? 'DoubleTap' : 'Tap'; logSignal('tap', k, e);
+    if (isMapped(k) && gestureAllowed(start)) handleSignal(k, { preventDefault() {}, target: start.target });
+    return;
+  }
+  if (dt > 900) return;
+  // a touch the system took over (pull-to-refresh, notification shade) is cancelled after only a few pixels:
+  // that still tells us the direction, so a cancelled touch counts from 10 px
+  if (!judgeSwipeFrom(start, dx, dy, e, cancelled ? 10 : 35)) logSignal(cancelled ? 'touch-cancel' : 'touch', `${dy > 0 ? '↓' : '↑'}${Math.round(Math.abs(dy))}px`, e);
+}
+function judgeSwipeFrom(start, dx, dy, e, min) { swipe = start; const ok = judgeSwipe(dx, dy, e, min); swipe = null; return ok; }
+window.addEventListener('touchend', (e) => endTouch(e, false), { capture: true, passive: true });
+window.addEventListener('touchcancel', (e) => endTouch(e, true), { capture: true, passive: true });
+/* Some remotes enumerate as a gamepad. */
+const padState = {};
+function pollGamepads() {
+  if (inputView()) {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const g of pads) { if (!g) continue; g.buttons.forEach((b, i) => { const id = g.index + ':' + i; if (b.pressed && !padState[id]) { const k = 'Pad' + i; diagLog(`gamepad  button ${i} (${g.id.slice(0, 24)})`); logSignal('gamepad', k, { code: g.id.slice(0, 24) }); if (isMapped(k)) handleSignal(k, { preventDefault() {}, target: document.body }); } padState[id] = b.pressed; }); }
+  }
+  setTimeout(pollGamepads, 80);
+}
+pollGamepads();
+function flashKey(k, lit) { const el = $('#keyflash'); if (!el) return; el.textContent = keyName(k); el.classList.toggle('lit', lit); el.classList.remove('x'); clearTimeout(el._t); el._t = setTimeout(() => { el.classList.remove('lit'); }, 500); }
+
+/* ---------------- misc ---------------- */
+async function requestWakeLock() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.view === 'stage' && !wakeLock) requestWakeLock(); });
+let toastT = 0;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); state.installPrompt = e; if (state.view === 'home') render(); });
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  try {
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      const check = () => reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+      setInterval(check, 5 * 60 * 1000);
+    }).catch(() => {});
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading || !navigator.serviceWorker.controller) return; reloading = true;
+      // a new build took over: reload right away unless a presentation or a recording is in progress
+      if (inputView() || aiJob.running) toast('새 버전이 준비됐습니다. 홈으로 나가면 적용됩니다');
+      else location.reload();
+    });
+  } catch {}
+}
+
+route();
+</script>
+<!--APP-END-->
+</body>
+</html>
