@@ -219,34 +219,30 @@ body.swipe-lock .status{min-height:20px;padding:2px 2px}
 .transport .btn svg{width:22px;height:22px}
 .transport .btn + .btn{margin-left:3px}
 
-/* cue stack (teleprompter roll) */
-.cue-stack{display:flex;flex-direction:column;gap:6px;padding:4px 0 8px}
-.ci{display:grid;grid-template-columns:34px 1fr;gap:0 6px;align-items:start;padding:6px 4px;min-height:44px;transition:opacity .2s}
-.ci .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;padding-top:4px;letter-spacing:.04em;display:flex;justify-content:flex-end;align-items:center;gap:5px}
-.ci .text{font-size:15px;line-height:1.5;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ci.d1{opacity:.85}
-.ci.d2{opacity:.5}
-.ci.d2 .text{font-size:14px}
-.ci.before .text{color:var(--text-dim)}
-.ci.after.d1 .text{color:var(--text)}
-.ci.empty{min-height:44px}
-.ci.now{display:block;padding:14px 18px 16px;border-radius:var(--r);background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);min-height:0;transition:box-shadow .25s}
-.ci.now.speaking{box-shadow:var(--sink),0 0 0 1px rgba(241,243,246,.18),0 0 26px rgba(241,243,246,.12)}
-.ci.now .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);margin-bottom:6px}
-.ci.now .tag .n{padding:0;margin-left:auto;font-size:11px}
-.ci.now .text{display:block;-webkit-line-clamp:unset;overflow:visible;color:var(--lamp);font-size:clamp(21px,5.6vw,30px);font-weight:400;line-height:1.5;text-shadow:0 0 18px rgba(241,243,246,.18);min-height:2.9em}
-.ci.now .track{margin-top:14px}
-.stack-1 .ci:not(.now){display:none}
-.stack-1 .ci.empty{display:none}
-.seg.mini{grid-template-columns:repeat(3,44px);margin:0}
-.seg.mini button{height:34px;font-family:var(--mono)}
-body.swipe-lock .cue-stack{gap:2px;padding:0 0 4px}
-body.swipe-lock .ci{min-height:32px;padding:3px 4px}
-body.swipe-lock .ci .text{-webkit-line-clamp:1;font-size:13.5px}
-body.swipe-lock .ci.empty{min-height:32px}
-body.swipe-lock .ci.now{padding:10px 14px 12px}
-body.swipe-lock .ci.now .text{font-size:clamp(19px,5vw,26px);min-height:2.6em}
-body.swipe-lock .ci.now .track{margin-top:8px}
+/* lyrics roll */
+.lyrics{position:relative;height:min(52vh,380px);border-radius:var(--r);overflow:hidden;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .25s}
+.lyrics.speaking{box-shadow:var(--sink),0 0 0 1px rgba(241,243,246,.16),0 0 28px rgba(241,243,246,.12)}
+.ly-list{position:absolute;left:0;right:0;top:0;padding:0 18px;transition:transform .42s cubic-bezier(.22,.8,.26,1);will-change:transform;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 66%,transparent 84%);mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 66%,transparent 84%)}
+.ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:9px 0;transition:opacity .42s ease,color .42s ease,font-size .3s ease}
+.ly .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;letter-spacing:.04em}
+.ly .text{font-size:16px;line-height:1.5;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;transition:inherit}
+.ly.before .text{color:var(--text-dim)}
+.ly.d1{opacity:.9}
+.ly.d2{opacity:.55}
+.ly.far{opacity:.3}
+.ly.after.d1 .text{color:var(--text)}
+.ly.now{opacity:1}
+.ly.now .n{color:var(--led-now)}
+.ly.now .text{color:var(--lamp);font-size:clamp(21px,5.6vw,29px);line-height:1.45;text-shadow:0 0 18px rgba(241,243,246,.2)}
+.ly-foot{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 14px;background:linear-gradient(180deg,rgba(28,31,35,0),rgba(30,33,38,.96) 45%)}
+.ly-foot .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px}
+.ly-foot .tag .n{margin-left:auto;color:var(--text-dim);letter-spacing:.04em}
+body.swipe-lock .lyrics{height:min(40vh,300px)}
+body.swipe-lock .ly{padding:6px 0}
+body.swipe-lock .ly .text{font-size:14.5px}
+body.swipe-lock .ly.now .text{font-size:clamp(19px,5vw,26px)}
+@media (prefers-reduced-motion:reduce){.ly-list,.ly{transition:none}}
 
 /* knob */
 .deck{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;margin-top:18px}
@@ -1100,7 +1096,11 @@ function renderStage() {
         <span class="counter"><span id="cur">01</span><small>/ ${String(s.sentences.length).padStart(2, '0')}</small></span>
         <span id="keyflash" class="key x" aria-label="마지막 리모컨 신호">·</span>
       </div>
-      <div class="cue-stack stack-${settings.stack}" id="cueStack" aria-live="off"></div>
+      <div class="lyrics" id="lyrics">
+        <div class="ly-list" id="lyList">${s.sentences.map((x, k) => `<div class="ly" data-k="${k}"><span class="n">${k + 1}</span><div class="text">${esc(x.text) || '<span class="dim">…</span>'}</div></div>`).join('')}</div>
+        <div class="ly-foot"><div class="tag"><i class="led now" id="ledNow"></i><span id="lyLabel">지금</span><span class="n" id="lyNum"></span></div>
+          <div class="track" aria-hidden="true"><div class="fill" id="fill"></div><div class="thumb" id="thumb"></div></div></div>
+      </div>
       <div class="status" id="status"></div>
       <div class="transport">
         <button class="btn" id="prev" aria-label="이전 문장 다시 읽기">${ICON.prev}이전</button>
@@ -1153,22 +1153,20 @@ function keyHints(playLabel = '읽기') {
 }
 function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Swipe←': '왼쪽으로 쓸기', 'Swipe→': '오른쪽으로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
 
-/* The stage shows a window of sentences with the current one centred, like a teleprompter roll:
-   dimmer with distance, the next one carries the green preview lamp, the current one the red on-air lamp. */
+/* The stage rolls the whole script like a lyrics screen: the current line sits bright at the centre of the
+   block, the line below waits dimmer, and on advance the list slides up so the next line brightens into place. */
 function updateCue() {
   const s = current(); if (!s || state.view !== 'stage') return;
-  const i = state.idx; const n = s.sentences.length; const half = Math.floor((settings.stack || 5) / 2);
+  const i = state.idx; const n = s.sentences.length;
   $('#cur').textContent = String(i + 1).padStart(2, '0');
-  const items = [];
-  for (let k = i - half; k <= i + half; k++) {
-    const d = Math.abs(k - i);
-    if (k < 0 || k >= n) { items.push(`<div class="ci empty d${d}"></div>`); continue; }
-    const x = s.sentences[k];
-    if (k === i) items.push(`<div class="ci now"><div class="tag"><i class="led now" id="ledNow"></i>지금<span class="n">${k + 1}</span></div><div class="text" id="nowText">${esc(x.text)}</div><div class="track" aria-hidden="true"><div class="fill" id="fill"></div><div class="thumb" id="thumb"></div></div></div>`);
-    else items.push(`<div class="ci d${d} ${k < i ? 'before' : 'after'}"><span class="n">${k === i + 1 ? '<i class="led next"></i>' : ''}${k + 1}</span><div class="text">${esc(x.text)}</div></div>`);
+  const list = $('#lyList'), box = $('#lyrics'); if (!list) return;
+  const items = list.children;
+  for (let k = 0; k < items.length; k++) { const d = k - i; items[k].className = 'ly' + (d === 0 ? ' now' : d < 0 ? ' before' : ' after') + (Math.abs(d) >= 3 ? ' far' : Math.abs(d) === 2 ? ' d2' : Math.abs(d) === 1 ? ' d1' : ''); }
+  const cur = items[i]; if (cur) {
+    const y = box.clientHeight * 0.42 - (cur.offsetTop + cur.offsetHeight / 2); // keep the centre a little above the progress footer
+    list.style.transform = `translateY(${Math.round(y)}px)`;
   }
-  if (i === n - 1) items[half] = items[half].replace('지금<span', '마지막 문장<span');
-  const st = $('#cueStack'); st.className = `cue-stack stack-${settings.stack || 5}`; st.innerHTML = items.join('');
+  $('#lyLabel').textContent = i === n - 1 ? '마지막 문장' : '지금'; $('#lyNum').textContent = i + 1;
   setProgress(0);
   $('#next').disabled = false;
 }
@@ -1188,7 +1186,7 @@ function renderStageStatus() {
   if (state.ttsNote) chips.push(`<span class="chip warn">${esc(state.ttsNote)}</span>`);
   el.innerHTML = chips.join('');
   const led = $('#ledNow'); if (led) led.classList.toggle('blink', sp);
-  const nowCard = $('.ci.now'); if (nowCard) nowCard.classList.toggle('speaking', sp);
+  const box = $('#lyrics'); if (box) box.classList.toggle('speaking', sp);
 }
 function tickElapsed() {
   if (state.view !== 'stage') return;
@@ -1394,9 +1392,6 @@ function renderSheet() {
     <div class="setting"><div class="label">기기 음성 목소리<small>${voices.length ? `${ko.length}개 한국어 음성` : '음성 목록을 불러오는 중'}</small></div></div>
     <div class="select-wrap"><select class="field" id="voice">${ko.map(opt).join('')}${others.length ? '<optgroup label="다른 언어">' + others.map(opt).join('') + '</optgroup>' : ''}</select></div>
     <div class="setting" style="margin-top:6px"><div class="label">미리 듣기<small>현재 속도 ${settings.rate}×</small></div><button class="btn small" id="testVoice">${ICON.speaker}테스트</button></div>
-    <h2>화면</h2>
-    <div class="setting"><div class="label">보이는 문장 수<small>현재 문장을 가운데 두고 앞뒤 문장을 함께 보여줍니다</small></div>
-      <div class="seg mini" role="radiogroup">${[1, 3, 5].map((v) => `<button role="radio" aria-checked="${(settings.stack || 5) === v}" data-stack="${v}">${v}</button>`).join('')}</div></div>
     <h2>자동 진행</h2>
     <div class="setting"><div class="label">다음 문장 시작 시점<small>내 말이 끝나기 몇 초 전에 다음 문장을 들려줄지</small></div>
       <div class="stepper"><button class="btn" id="leadDown">−</button><span class="val" id="leadVal">${settings.lead.toFixed(1)}s</span><button class="btn" id="leadUp">+</button></div></div>
@@ -1412,7 +1407,6 @@ function renderSheet() {
   $('#testVoice').onclick = () => tts.speak('안녕하세요. 이 속도로 대본을 읽어 드립니다.');
   $('#leadDown').onclick = () => { settings.lead = clamp(settings.lead - 0.5, 0, 10); saveSettings(); $('#leadVal').textContent = settings.lead.toFixed(1) + 's'; $('#leadLbl').textContent = settings.lead; };
   $('#leadUp').onclick = () => { settings.lead = clamp(settings.lead + 0.5, 0, 10); saveSettings(); $('#leadVal').textContent = settings.lead.toFixed(1) + 's'; $('#leadLbl').textContent = settings.lead; };
-  sh.querySelectorAll('[data-stack]').forEach((b) => b.onclick = () => { settings.stack = +b.dataset.stack; saveSettings(); renderSheet(); updateCue(); });
   sh.querySelectorAll('[data-learn]').forEach((b) => b.onclick = () => { state.learning = b.dataset.learn; renderSheet(); });
   sh.querySelectorAll('[data-unkey]').forEach((b) => b.onclick = () => { const [id, k] = b.dataset.unkey.split(/:(.*)/); settings.keymap[id] = settings.keymap[id].filter((x) => x !== k); saveSettings(); renderSheet(); });
   $('#resetKeys').onclick = () => { settings.keymap = JSON.parse(JSON.stringify(DEFAULT_KEYMAP)); saveSettings(); renderSheet(); };
