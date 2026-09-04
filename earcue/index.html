@@ -230,7 +230,7 @@ body.swipe-lock .status{min-height:20px;padding:2px 2px}
 .ly-pad{height:42%}
 .ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:8px 0;transition:color .3s ease}
 .ly .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;letter-spacing:.04em}
-.ly .text{font-size:clamp(17px,4.6vw,21px);line-height:1.55;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;transition:color .3s ease}
+.ly .text{font-size:var(--script-size,18px);line-height:1.55;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;transition:color .3s ease}
 .ly.before .text{color:var(--text-dim)}
 .ly.now .n{color:var(--neon)}
 .ly.now .text{color:var(--neon);font-weight:500;text-shadow:0 0 14px rgba(92,255,157,.35)}
@@ -240,7 +240,6 @@ body.swipe-lock .status{min-height:20px;padding:2px 2px}
 body.swipe-lock .lyrics{height:max(280px,calc(100dvh - 430px))}
 body.swipe-lock .ly-list{touch-action:none}
 body.swipe-lock .ly{padding:6px 0}
-body.swipe-lock .ly .text{font-size:clamp(15px,4.2vw,18px)}
 
 /* knob */
 .deck{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;margin-top:18px}
@@ -356,7 +355,7 @@ body.swipe-lock .ly .text{font-size:clamp(15px,4.2vw,18px)}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v21';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -407,7 +406,7 @@ const DEFAULT_KEYMAP = {
   prev: ['PageUp', 'ArrowLeft', 'ArrowUp', 'Media:prev', 'Swipe↓'],
   play: ['F5', '.', 'Enter', 'b', 'Media:play', 'Tap'],
 };
-const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, stack: 5, elVoiceId: '', elVoiceName: '', elPreset: 'calm', elKeepRec: true };
+const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, fontSize: 18, elVoiceId: '', elVoiceName: '', elPreset: 'calm', elKeepRec: true };
 
 const store = {
   load(k, d) { try { const v = localStorage.getItem('earcue.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -1082,9 +1081,10 @@ function renderAI() {
 }
 
 /* ---- stage ---- */
+function applyFontSize() { document.documentElement.style.setProperty('--script-size', clamp(settings.fontSize || 18, 12, 40) + 'px'); }
 function renderStage() {
   const s = current();
-  app.classList.add('stage-app');
+  app.classList.add('stage-app'); applyFontSize();
   const gestureKeys = ['Swipe↑', 'Swipe↓', 'Swipe←', 'Swipe→', 'Tap', 'DoubleTap'];
   document.body.classList.toggle('swipe-lock', gestureKeys.some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))));
   app.innerHTML = `
@@ -1392,6 +1392,9 @@ function renderSheet() {
     <div class="setting"><div class="label">기기 음성 목소리<small>${voices.length ? `${ko.length}개 한국어 음성` : '음성 목록을 불러오는 중'}</small></div></div>
     <div class="select-wrap"><select class="field" id="voice">${ko.map(opt).join('')}${others.length ? '<optgroup label="다른 언어">' + others.map(opt).join('') + '</optgroup>' : ''}</select></div>
     <div class="setting" style="margin-top:6px"><div class="label">미리 듣기<small>현재 속도 ${settings.rate}×</small></div><button class="btn small" id="testVoice">${ICON.speaker}테스트</button></div>
+    <h2>화면</h2>
+    <div class="setting"><div class="label">대본 글자 크기<small>발표 화면의 문장 글씨</small></div>
+      <div class="stepper"><button class="btn" id="fontDown" aria-label="작게">−</button><span class="val" id="fontVal">${settings.fontSize || 18}px</span><button class="btn" id="fontUp" aria-label="크게">+</button></div></div>
     <h2>자동 진행</h2>
     <div class="setting"><div class="label">다음 문장 시작 시점<small>내 말이 끝나기 몇 초 전에 다음 문장을 들려줄지</small></div>
       <div class="stepper"><button class="btn" id="leadDown">−</button><span class="val" id="leadVal">${settings.lead.toFixed(1)}s</span><button class="btn" id="leadUp">+</button></div></div>
@@ -1405,6 +1408,8 @@ function renderSheet() {
   $('#voice').onchange = (e) => { settings.voiceURI = e.target.value; saveSettings(); };
   sh.querySelectorAll('[data-src]').forEach((b) => b.onclick = () => { settings.voiceSource = b.dataset.src; saveSettings(); renderSheet(); });
   $('#testVoice').onclick = () => tts.speak('안녕하세요. 이 속도로 대본을 읽어 드립니다.');
+  const setFont = (d) => { settings.fontSize = clamp((settings.fontSize || 18) + d, 12, 40); saveSettings(); $('#fontVal').textContent = settings.fontSize + 'px'; applyFontSize(); updateCue(); };
+  $('#fontDown').onclick = () => setFont(-1); $('#fontUp').onclick = () => setFont(1);
   $('#leadDown').onclick = () => { settings.lead = clamp(settings.lead - 0.5, 0, 10); saveSettings(); $('#leadVal').textContent = settings.lead.toFixed(1) + 's'; $('#leadLbl').textContent = settings.lead; };
   $('#leadUp').onclick = () => { settings.lead = clamp(settings.lead + 0.5, 0, 10); saveSettings(); $('#leadVal').textContent = settings.lead.toFixed(1) + 's'; $('#leadLbl').textContent = settings.lead; };
   sh.querySelectorAll('[data-learn]').forEach((b) => b.onclick = () => { state.learning = b.dataset.learn; renderSheet(); });
