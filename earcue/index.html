@@ -1034,7 +1034,7 @@ function renderStage() {
   app.classList.add('stage-app');
   app.innerHTML = `
     ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: `<button class="btn icon ghost" id="settings" aria-label="설정">${ICON.gear}</button>` })}
-    <main class="view stage ${['Swipe↑', 'Swipe↓'].some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))) ? 'swipe-mode' : ''}" id="stage" tabindex="0">
+    <main class="view stage ${['Swipe↑', 'Swipe↓', 'Tap', 'DoubleTap'].some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))) ? 'swipe-mode' : ''}" id="stage" tabindex="0">
       <div class="stage-head">
         <span id="elapsed">00:00</span>
         <span class="counter"><span id="cur">01</span><small>/ ${String(s.sentences.length).padStart(2, '0')}</small></span>
@@ -1094,7 +1094,7 @@ function keyHints(playLabel = '읽기') {
   const show = (arr) => arr.slice(0, 2).map((k) => `<span class="key">${esc(keyName(k))}</span>`).join(' ');
   return `${show(km.next)} 다음 <span class="sep">·</span> ${show(km.prev)} 이전 <span class="sep">·</span> ${show(km.play)} ${playLabel}`;
 }
-function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
+function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
 
 function updateCue() {
   const s = current(); if (!s || state.view !== 'stage') return;
@@ -1451,13 +1451,25 @@ const media = {
 /* Remotes in "shorts" mode inject finger swipes. Touch events keep firing even when the page scrolls. */
 let swipe = null;
 window.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY, t: performance.now(), target: e.target }; }, { capture: true, passive: true });
+let lastTapAt = 0;
 window.addEventListener('touchend', (e) => {
   if (!swipe) return; const t = e.changedTouches[0]; const dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, dt = performance.now() - swipe.t; const start = swipe; swipe = null;
   if (state.view !== 'stage' && state.view !== 'record') return;
+  const onControl = !!start.target.closest('button,input,select,textarea,a,.knob,.switch,.rocker,.seg');
+  const cueArea = !!start.target.closest('.cue, .stage-head, .status, .hint');
+  // a short still touch is a tap; a ring's centre button usually injects one (or two) at the screen centre
+  if (dt < 450 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+    if (onControl) return; // the app's own buttons keep their click behaviour
+    const dbl = performance.now() - lastTapAt < 350; lastTapAt = dbl ? 0 : performance.now();
+    const k = dbl ? 'DoubleTap' : 'Tap'; logSignal('tap', k, e);
+    if (!isMapped(k)) return;
+    if (!state.learning && !cueArea) return;
+    handleSignal(k, { preventDefault() {}, target: start.target }); return;
+  }
   if (dt > 900 || Math.abs(dy) < 45 || Math.abs(dx) > Math.abs(dy) * 0.8) return;
   const k = dy < 0 ? 'Swipe↑' : 'Swipe↓'; logSignal('swipe', k, e);
   if (!isMapped(k)) return;
-  if (!state.learning && !start.target.closest('.cue, .stage-head, .status')) return; // swipes on controls stay ordinary
+  if (!state.learning && !cueArea) return; // swipes on controls stay ordinary
   handleSignal(k, { preventDefault() {}, target: start.target });
 }, { capture: true, passive: true });
 /* Some remotes enumerate as a gamepad. */
