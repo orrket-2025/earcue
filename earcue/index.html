@@ -350,10 +350,12 @@ const SAMPLE_TEXT = `안녕하세요. 오늘 3분기 제품 로드맵을 발표�
 질문이 있으시면 지금 받겠습니다. 감사합니다.`;
 
 /* ---------------- storage ---------------- */
+/* Defaults cover presentation clickers (PageUp/Down, arrows, F5), remotes in music mode (media keys) and
+   ring remotes in shorts mode (swipe up = next, swipe down = previous, centre tap = read). */
 const DEFAULT_KEYMAP = {
-  next: ['PageDown', 'ArrowRight', 'ArrowDown', ' ', 'Media:next'],
-  prev: ['PageUp', 'ArrowLeft', 'ArrowUp', 'Media:prev'],
-  play: ['F5', '.', 'Enter', 'b', 'Media:play'],
+  next: ['PageDown', 'ArrowRight', 'ArrowDown', ' ', 'Media:next', 'Swipe↑'],
+  prev: ['PageUp', 'ArrowLeft', 'ArrowUp', 'Media:prev', 'Swipe↓'],
+  play: ['F5', '.', 'Enter', 'b', 'Media:play', 'Tap'],
 };
 const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, elVoiceId: '', elVoiceName: '', elPreset: 'calm', elKeepRec: true };
 
@@ -1034,7 +1036,7 @@ function renderStage() {
   app.classList.add('stage-app');
   app.innerHTML = `
     ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: `<button class="btn icon ghost" id="settings" aria-label="설정">${ICON.gear}</button>` })}
-    <main class="view stage ${['Swipe↑', 'Swipe↓', 'Tap', 'DoubleTap'].some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))) ? 'swipe-mode' : ''}" id="stage" tabindex="0">
+    <main class="view stage ${['Swipe↑', 'Swipe↓', 'Swipe←', 'Swipe→', 'Tap', 'DoubleTap'].some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))) ? 'swipe-mode' : ''}" id="stage" tabindex="0">
       <div class="stage-head">
         <span id="elapsed">00:00</span>
         <span class="counter"><span id="cur">01</span><small>/ ${String(s.sentences.length).padStart(2, '0')}</small></span>
@@ -1094,7 +1096,7 @@ function keyHints(playLabel = '읽기') {
   const show = (arr) => arr.slice(0, 2).map((k) => `<span class="key">${esc(keyName(k))}</span>`).join(' ');
   return `${show(km.next)} 다음 <span class="sep">·</span> ${show(km.prev)} 이전 <span class="sep">·</span> ${show(km.play)} ${playLabel}`;
 }
-function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
+function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Swipe←': '왼쪽으로 쓸기', 'Swipe→': '오른쪽으로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
 
 function updateCue() {
   const s = current(); if (!s || state.view !== 'stage') return;
@@ -1334,7 +1336,7 @@ function renderSheet() {
     <p class="hint">읽어준 시간과 속도로 실제 말하는 시간을 추정합니다. 몇 문장 지나면 더 정확해집니다.</p>
     <h2>리모컨 버튼</h2>
     ${keyRow('next', '다음')}${keyRow('prev', '이전')}${keyRow('play', '읽기')}
-    <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기(쇼츠 모드), 게임패드 신호를 모두 받습니다. 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
+    <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기·탭(쇼츠 모드 링 리모컨), 게임패드 신호를 모두 받습니다. 링 리모컨은 기본값으로 위로 쓸기 = 다음, 아래로 쓸기 = 이전, 가운데 탭 = 읽기입니다. 길게 누르기(볼륨·화면 잠금)는 브라우저가 받지 못합니다. 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
     <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><button class="btn ghost small" id="resetKeys">기본값으로</button></div>
     <div class="sig-mon" id="sigMon">${signalMonitor()}</div>
     <div class="row" style="margin-top:18px"><button class="btn lamp grow" id="closeSheet">닫기</button></div>`;
@@ -1466,8 +1468,12 @@ window.addEventListener('touchend', (e) => {
     if (!state.learning && !cueArea) return;
     handleSignal(k, { preventDefault() {}, target: start.target }); return;
   }
-  if (dt > 900 || Math.abs(dy) < 45 || Math.abs(dx) > Math.abs(dy) * 0.8) return;
-  const k = dy < 0 ? 'Swipe↑' : 'Swipe↓'; logSignal('swipe', k, e);
+  if (dt > 900) return;
+  let k = '';
+  if (Math.abs(dy) >= 45 && Math.abs(dx) <= Math.abs(dy) * 0.8) k = dy < 0 ? 'Swipe↑' : 'Swipe↓';
+  else if (Math.abs(dx) >= 45 && Math.abs(dy) <= Math.abs(dx) * 0.8) k = dx < 0 ? 'Swipe←' : 'Swipe→';
+  if (!k) return;
+  logSignal('swipe', k, e);
   if (!isMapped(k)) return;
   if (!state.learning && !cueArea) return; // swipes on controls stay ordinary
   handleSignal(k, { preventDefault() {}, target: start.target });
