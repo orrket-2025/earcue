@@ -169,6 +169,7 @@ select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-
 
 /* stage */
 .stage{gap:0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+.stage.swipe-mode .cue,.stage.swipe-mode .stage-head,.stage.swipe-mode .status{touch-action:none}
 .stage-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:13px;color:var(--text-soft);padding:4px 0 14px;letter-spacing:.06em}
 .stage-head .counter{font-size:22px;color:var(--text);letter-spacing:.08em}
 .stage-head .counter small{font-size:13px;color:var(--text-dim);margin-left:4px}
@@ -350,9 +351,9 @@ const SAMPLE_TEXT = `안녕하세요. 오늘 3분기 제품 로드맵을 발표�
 
 /* ---------------- storage ---------------- */
 const DEFAULT_KEYMAP = {
-  next: ['PageDown', 'ArrowRight', 'ArrowDown', ' '],
-  prev: ['PageUp', 'ArrowLeft', 'ArrowUp'],
-  play: ['F5', '.', 'Enter', 'b'],
+  next: ['PageDown', 'ArrowRight', 'ArrowDown', ' ', 'Media:next'],
+  prev: ['PageUp', 'ArrowLeft', 'ArrowUp', 'Media:prev'],
+  play: ['F5', '.', 'Enter', 'b', 'Media:play'],
 };
 const DEFAULT_SETTINGS = { rate: 1.3, voiceURI: '', auto: false, lead: 2, listen: false, keymap: DEFAULT_KEYMAP, voiceSource: 'mine', recAdvance: true, elVoiceId: '', elVoiceName: '', elPreset: 'calm', elKeepRec: true };
 
@@ -747,7 +748,7 @@ window.addEventListener('hashchange', route);
 const current = () => scripts.find((s) => s.id === state.scriptId);
 
 function stopEverything() {
-  stopVoice(); listener.stop(); recorder.release(); state.recording = false; state.ttsNote = ''; clearTimeout(state.autoTimer); state.autoDue = 0;
+  stopVoice(); listener.stop(); recorder.release(); media.stop(); state.recording = false; state.ttsNote = ''; clearTimeout(state.autoTimer); state.autoDue = 0;
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   closeSheet(true);
 }
@@ -1033,7 +1034,7 @@ function renderStage() {
   app.classList.add('stage-app');
   app.innerHTML = `
     ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: `<button class="btn icon ghost" id="settings" aria-label="설정">${ICON.gear}</button>` })}
-    <main class="view stage" id="stage" tabindex="0">
+    <main class="view stage ${['Swipe↑', 'Swipe↓'].some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))) ? 'swipe-mode' : ''}" id="stage" tabindex="0">
       <div class="stage-head">
         <span id="elapsed">00:00</span>
         <span class="counter"><span id="cur">01</span><small>/ ${String(s.sentences.length).padStart(2, '0')}</small></span>
@@ -1093,7 +1094,7 @@ function keyHints(playLabel = '읽기') {
   const show = (arr) => arr.slice(0, 2).map((k) => `<span class="key">${esc(keyName(k))}</span>`).join(' ');
   return `${show(km.next)} 다음 <span class="sep">·</span> ${show(km.prev)} 이전 <span class="sep">·</span> ${show(km.play)} ${playLabel}`;
 }
-function keyName(k) { return ({ 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
+function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
 
 function updateCue() {
   const s = current(); if (!s || state.view !== 'stage') return;
@@ -1118,6 +1119,7 @@ function renderStageStatus() {
   if (state.recMissing) chips.push(`<span class="chip"><i class="led"></i>녹음 없음 · 기기 음성</span>`);
   if (settings.auto) chips.push(`<span class="chip on" id="autoChip"><i class="led lamp ${state.autoDue ? 'blink' : ''}"></i>자동 <span id="autoCount">${state.autoDue ? ((state.autoDue - performance.now()) / 1000).toFixed(1) + 's' : settings.lead + 's'}</span></span>`);
   if (settings.listen) chips.push(`<span class="chip on"><i class="led ${listener.on && !listener.suspended ? 'next' : ''}"></i>말 인식 ${!listener.on ? '꺼짐' : listener.suspended ? '대기' : '듣는 중'}</span>`);
+  if (media.ready) chips.push(`<span class="chip"><i class="led lamp"></i>미디어 키 대기</span>`);
   if (state.ttsNote) chips.push(`<span class="chip warn">${esc(state.ttsNote)}</span>`);
   el.innerHTML = chips.join('');
   const led = $('#ledNow'); if (led) led.classList.toggle('blink', sp);
@@ -1332,7 +1334,7 @@ function renderSheet() {
     <p class="hint">읽어준 시간과 속도로 실제 말하는 시간을 추정합니다. 몇 문장 지나면 더 정확해집니다.</p>
     <h2>리모컨 버튼</h2>
     ${keyRow('next', '다음')}${keyRow('prev', '이전')}${keyRow('play', '읽기')}
-    <p class="hint" style="margin-top:8px">리모컨은 휴대폰 블루투스 설정에서 키보드처럼 연결하세요. 버튼을 눌러도 아래에 아무 신호가 안 잡히면 리모컨이 마우스 모드일 수 있습니다. 키보드 모드로 바꾼 뒤 다시 시도하세요.</p>
+    <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기(쇼츠 모드), 게임패드 신호를 모두 받습니다. 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
     <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><button class="btn ghost small" id="resetKeys">기본값으로</button></div>
     <div class="sig-mon" id="sigMon">${signalMonitor()}</div>
     <div class="row" style="margin-top:18px"><button class="btn lamp grow" id="closeSheet">닫기</button></div>`;
@@ -1359,12 +1361,12 @@ function keyFromEvent(e) {
 }
 state.signals = [];
 function logSignal(type, key, e) {
-  state.signals.unshift({ type, key, code: e.code || '', keyCode: e.keyCode || 0, t: Date.now() });
+  state.signals.unshift({ type, key, code: e.code || (e.pointerType ? e.pointerType : ''), keyCode: e.keyCode || 0, t: Date.now() });
   state.signals.length = Math.min(state.signals.length, 6);
   const mon = $('#sigMon'); if (mon) mon.innerHTML = signalMonitor();
 }
 function signalMonitor() {
-  if (!state.signals.length) return '<span class="dim">아직 받은 신호가 없습니다. 리모컨 버튼을 눌러 보세요.</span>';
+  if (!state.signals.length) return '<span class="dim">아직 받은 신호가 없습니다. 리모컨 버튼을 눌러 보세요. 키보드·휠·마우스 클릭·스크롤·게임패드 신호를 모두 표시합니다.</span>';
   return state.signals.map((x) => `<span class="sig"><span class="key">${esc(keyName(x.key) || '?')}</span><span class="dim">${x.type}${x.code ? ' · ' + esc(x.code) : ''}${x.keyCode ? ' · #' + x.keyCode : ''}</span></span>`).join('');
 }
 const ACTION_LABEL = { next: '다음', prev: '이전', play: '읽기' };
@@ -1406,6 +1408,68 @@ window.addEventListener('wheel', (e) => {
   if (performance.now() - lastWheelAt < 400) return; // one press often arrives as several wheel ticks
   lastWheelAt = performance.now(); logSignal('wheel', k, e); handleSignal(k, e);
 }, { passive: false, capture: true });
+const isMapped = (k) => { const km = settings.keymap; return !!state.learning || km.next.includes(k) || km.prev.includes(k) || km.play.includes(k); };
+/* Remotes in mouse mode: their buttons arrive as mouse clicks, which a phone's finger taps never are. */
+window.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'mouse') { lastTouchAt = performance.now(); return; }
+  if (state.view !== 'stage' && state.view !== 'record') return;
+  const k = 'Mouse' + e.button; logSignal('mouse', k, e);
+  if (!isMapped(k)) return;
+  if (!state.learning && e.target.closest('button,input,select,textarea,.knob,.sheet')) return; // real mouse use of the UI
+  e.preventDefault(); handleSignal(k, e);
+}, true);
+window.addEventListener('touchstart', () => { lastTouchAt = performance.now(); }, { passive: true, capture: true });
+/* Scrolling that no finger and no wheel caused: the system moved the page for the remote. */
+let lastTouchAt = 0, lastScrollTop = new WeakMap(), lastScrollAt = 0;
+window.addEventListener('scroll', (e) => {
+  if (state.view !== 'stage' && state.view !== 'record') return;
+  const el = e.target === document ? document.scrollingElement : e.target; if (!el) return;
+  const top = el.scrollTop, prev = lastScrollTop.get(el); lastScrollTop.set(el, top);
+  if (prev === undefined || top === prev) return;
+  if (performance.now() - lastTouchAt < 900 || performance.now() - lastWheelAt < 300) return;
+  const k = top > prev ? 'Scroll↓' : 'Scroll↑';
+  if (performance.now() - lastScrollAt < 500) return; lastScrollAt = performance.now();
+  logSignal('scroll', k, e);
+  if (isMapped(k)) handleSignal(k, e);
+}, true);
+/* Remotes in "music" mode send media keys. Android hands those to whichever page holds an audio session,
+   so a near-silent loop is kept playing while the stage is open (started on the first tap, as browsers require). */
+const media = {
+  el: null, ready: false,
+  start() {
+    if (this.ready || !('mediaSession' in navigator) || (state.view !== 'stage' && state.view !== 'record')) return;
+    const a = new Audio(URL.createObjectURL(wavBlob(new Float32Array(4000), 8000))); a.loop = true; a.volume = 0.05; this.el = a;
+    const acts = { nexttrack: 'Media:next', previoustrack: 'Media:prev', seekforward: 'Media:next', seekbackward: 'Media:prev', play: 'Media:play', pause: 'Media:play', stop: 'Media:play' };
+    for (const [action, k] of Object.entries(acts)) {
+      try { navigator.mediaSession.setActionHandler(action, () => { logSignal('media', k, { code: action }); handleSignal(k, { preventDefault() {}, target: document.body }); try { navigator.mediaSession.playbackState = 'playing'; } catch {} if (this.el && this.el.paused) this.el.play().catch(() => {}); }); } catch {}
+    }
+    a.play().then(() => { this.ready = true; try { navigator.mediaSession.metadata = new MediaMetadata({ title: '리모컨 대기 중', artist: 'EarCue 이어큐' }); navigator.mediaSession.playbackState = 'playing'; } catch {} renderStageStatus(); }).catch(() => {});
+  },
+  stop() { if (this.el) { this.el.pause(); this.el.removeAttribute('src'); this.el = null; } this.ready = false; try { for (const a of ['nexttrack', 'previoustrack', 'seekforward', 'seekbackward', 'play', 'pause', 'stop']) navigator.mediaSession.setActionHandler(a, null); } catch {} },
+};
+['pointerdown', 'keydown', 'touchstart'].forEach((ev) => window.addEventListener(ev, () => media.start(), { capture: true, passive: true }));
+/* Remotes in "shorts" mode inject finger swipes. Touch events keep firing even when the page scrolls. */
+let swipe = null;
+window.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY, t: performance.now(), target: e.target }; }, { capture: true, passive: true });
+window.addEventListener('touchend', (e) => {
+  if (!swipe) return; const t = e.changedTouches[0]; const dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, dt = performance.now() - swipe.t; const start = swipe; swipe = null;
+  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (dt > 900 || Math.abs(dy) < 45 || Math.abs(dx) > Math.abs(dy) * 0.8) return;
+  const k = dy < 0 ? 'Swipe↑' : 'Swipe↓'; logSignal('swipe', k, e);
+  if (!isMapped(k)) return;
+  if (!state.learning && !start.target.closest('.cue, .stage-head, .status')) return; // swipes on controls stay ordinary
+  handleSignal(k, { preventDefault() {}, target: start.target });
+}, { capture: true, passive: true });
+/* Some remotes enumerate as a gamepad. */
+const padState = {};
+function pollGamepads() {
+  if (state.view === 'stage' || state.view === 'record') {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const g of pads) { if (!g) continue; g.buttons.forEach((b, i) => { const id = g.index + ':' + i; if (b.pressed && !padState[id]) { const k = 'Pad' + i; logSignal('gamepad', k, { code: g.id.slice(0, 24) }); if (isMapped(k)) handleSignal(k, { preventDefault() {}, target: document.body }); } padState[id] = b.pressed; }); }
+  }
+  setTimeout(pollGamepads, 80);
+}
+pollGamepads();
 function flashKey(k, lit) { const el = $('#keyflash'); if (!el) return; el.textContent = keyName(k); el.classList.toggle('lit', lit); el.classList.remove('x'); clearTimeout(el._t); el._t = setTimeout(() => { el.classList.remove('lit'); }, 500); }
 
 /* ---------------- misc ---------------- */
