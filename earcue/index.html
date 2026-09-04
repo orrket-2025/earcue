@@ -275,6 +275,8 @@ select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-
 .keymap-row .keys .k button{width:22px;height:24px;font-size:13px;color:var(--text-dim);border-left:1px solid rgba(0,0,0,.35);border-radius:0 7px 7px 0}
 .keymap-row .keys .k button:hover{color:var(--text)}
 .keymap-row .empty-keys{font-size:12px;color:var(--text-dim)}
+.sig-mon{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font-family:var(--mono);font-size:11.5px}
+.sig-mon .sig{display:flex;align-items:center;gap:10px}
 .learn-note{font-family:var(--mono);font-size:12px;color:var(--lamp);animation:blink 1s steps(2,start) infinite}
 
 .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translate(-50%,20px);padding:10px 16px;border-radius:12px;background:linear-gradient(180deg,#F6F7F9,#CFD3D9);color:#20242A;font-size:14px;font-weight:500;box-shadow:var(--raise),0 0 22px var(--lamp-glow);opacity:0;pointer-events:none;transition:.22s;z-index:30;max-width:calc(100% - 36px);text-align:center}
@@ -1091,7 +1093,7 @@ function keyHints(playLabel = '읽기') {
   const show = (arr) => arr.slice(0, 2).map((k) => `<span class="key">${esc(keyName(k))}</span>`).join(' ');
   return `${show(km.next)} 다음 <span class="sep">·</span> ${show(km.prev)} 이전 <span class="sep">·</span> ${show(km.play)} ${playLabel}`;
 }
-function keyName(k) { return ({ ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
+function keyName(k) { return ({ 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
 
 function updateCue() {
   const s = current(); if (!s || state.view !== 'stage') return;
@@ -1330,7 +1332,9 @@ function renderSheet() {
     <p class="hint">읽어준 시간과 속도로 실제 말하는 시간을 추정합니다. 몇 문장 지나면 더 정확해집니다.</p>
     <h2>리모컨 버튼</h2>
     ${keyRow('next', '다음')}${keyRow('prev', '이전')}${keyRow('play', '읽기')}
-    <div class="row between" style="margin-top:8px"><p class="hint">리모컨은 휴대폰 블루투스 설정에서 키보드처럼 연결하세요. 마지막 신호: <span class="key">${esc(state.lastKey ? keyName(state.lastKey) : '없음')}</span></p><button class="btn ghost small" id="resetKeys">기본값</button></div>
+    <p class="hint" style="margin-top:8px">리모컨은 휴대폰 블루투스 설정에서 키보드처럼 연결하세요. 버튼을 눌러도 아래에 아무 신호가 안 잡히면 리모컨이 마우스 모드일 수 있습니다. 키보드 모드로 바꾼 뒤 다시 시도하세요.</p>
+    <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><button class="btn ghost small" id="resetKeys">기본값으로</button></div>
+    <div class="sig-mon" id="sigMon">${signalMonitor()}</div>
     <div class="row" style="margin-top:18px"><button class="btn lamp grow" id="closeSheet">닫기</button></div>`;
   $('#voice').onchange = (e) => { settings.voiceURI = e.target.value; saveSettings(); };
   sh.querySelectorAll('[data-src]').forEach((b) => b.onclick = () => { settings.voiceSource = b.dataset.src; saveSettings(); renderSheet(); });
@@ -1343,19 +1347,40 @@ function renderSheet() {
   $('#closeSheet').onclick = () => { closeSheet(); renderStage(); };
 }
 
-/* ---------------- keyboard / remote ---------------- */
-window.addEventListener('keydown', (e) => {
+/* ---------------- keyboard / remote ----------------
+   Presentation remotes reach the page as keyboard keys, but some Android builds hand over an empty key name
+   or only a scroll gesture. Every input path is folded into one "signal" so the learn mode and the keymap
+   can use whichever the remote actually sends. */
+const KEYCODE_MAP = { 33: 'PageUp', 34: 'PageDown', 37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 32: ' ', 13: 'Enter', 27: 'Escape', 116: 'F5', 190: '.', 66: 'b', 9: 'Tab' };
+function keyFromEvent(e) {
+  let k = e.key;
+  if (!k || k === 'Unidentified' || k === 'Dead' || k === 'Process') k = KEYCODE_MAP[e.keyCode] || e.code || '';
+  return k;
+}
+state.signals = [];
+function logSignal(type, key, e) {
+  state.signals.unshift({ type, key, code: e.code || '', keyCode: e.keyCode || 0, t: Date.now() });
+  state.signals.length = Math.min(state.signals.length, 6);
+  const mon = $('#sigMon'); if (mon) mon.innerHTML = signalMonitor();
+}
+function signalMonitor() {
+  if (!state.signals.length) return '<span class="dim">아직 받은 신호가 없습니다. 리모컨 버튼을 눌러 보세요.</span>';
+  return state.signals.map((x) => `<span class="sig"><span class="key">${esc(keyName(x.key) || '?')}</span><span class="dim">${x.type}${x.code ? ' · ' + esc(x.code) : ''}${x.keyCode ? ' · #' + x.keyCode : ''}</span></span>`).join('');
+}
+const ACTION_LABEL = { next: '다음', prev: '이전', play: '읽기' };
+let lastKeyDownAt = 0;
+function handleSignal(key, e) {
+  if (!key) return;
   if (state.view !== 'stage' && state.view !== 'record') return;
-  const key = e.key;
   if (state.learning) {
     e.preventDefault();
     const id = state.learning; const km = settings.keymap;
     for (const k of Object.keys(km)) km[k] = km[k].filter((x) => x !== key);
-    km[id].unshift(key); saveSettings(); state.lastKey = key; state.learning = null; renderSheet(); toast(`"${keyName(key)}" 버튼을 ${({ next: '다음', prev: '이전', play: '읽기' })[id]}에 연결했습니다`);
+    km[id].unshift(key); saveSettings(); state.lastKey = key; state.learning = null; renderSheet(); toast(`"${keyName(key)}" 버튼을 ${ACTION_LABEL[id]}에 연결했습니다`);
     return;
   }
   if (sheetOpen) { if (key === 'Escape') closeSheet(); return; }
-  const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  const tag = (e.target && e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
   const km = settings.keymap;
   const action = km.next.includes(key) ? 'next' : km.prev.includes(key) ? 'prev' : km.play.includes(key) ? 'play' : null;
   state.lastKey = key; flashKey(key, !!action);
@@ -1363,7 +1388,24 @@ window.addEventListener('keydown', (e) => {
   e.preventDefault(); if (e.repeat) return;
   if (state.view === 'record') { flashButton({ next: 'rNext', prev: 'rPrev', play: 'rToggle' }[action]); if (action === 'play') toggleRecording(); else moveRecord(action === 'next' ? 1 : -1); return; }
   act(action);
-});
+}
+window.addEventListener('keydown', (e) => { const k = keyFromEvent(e); lastKeyDownAt = performance.now(); logSignal('keydown', k, e); handleSignal(k, e); }, true);
+window.addEventListener('keyup', (e) => {
+  const k = keyFromEvent(e); logSignal('keyup', k, e);
+  // a device that never sends keydown still gets handled on keyup
+  if (performance.now() - lastKeyDownAt > 600) handleSignal(k, e);
+}, true);
+let lastWheelAt = 0;
+window.addEventListener('wheel', (e) => {
+  if (state.view !== 'stage' && state.view !== 'record') return;
+  const k = e.deltaY > 0 ? 'Wheel↓' : e.deltaY < 0 ? 'Wheel↑' : '';
+  if (!k) return;
+  const km = settings.keymap; const mapped = state.learning || km.next.includes(k) || km.prev.includes(k) || km.play.includes(k);
+  if (!mapped) return;
+  e.preventDefault();
+  if (performance.now() - lastWheelAt < 400) return; // one press often arrives as several wheel ticks
+  lastWheelAt = performance.now(); logSignal('wheel', k, e); handleSignal(k, e);
+}, { passive: false, capture: true });
 function flashKey(k, lit) { const el = $('#keyflash'); if (!el) return; el.textContent = keyName(k); el.classList.toggle('lit', lit); el.classList.remove('x'); clearTimeout(el._t); el._t = setTimeout(() => { el.classList.remove('lit'); }, 500); }
 
 /* ---------------- misc ---------------- */
