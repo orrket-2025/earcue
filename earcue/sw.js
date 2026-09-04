@@ -1,4 +1,4 @@
-const CACHE = 'earcue-v17';
+const CACHE = 'earcue-v18';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg', './icon-maskable.svg'];
 
 self.addEventListener('install', (e) => {
@@ -21,7 +21,8 @@ self.addEventListener('fetch', (e) => {
   const cacheable = sameOrigin || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdnjs.cloudflare.com';
   if (!cacheable) return;
 
-  const fromNetwork = () => fetch(e.request).then((res) => {
+  // GitHub Pages serves files with a 10-minute HTTP cache; revalidate app files so updates arrive at once.
+  const fromNetwork = () => fetch(sameOrigin ? new Request(e.request, { cache: 'no-cache' }) : e.request).then((res) => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
     return res;
   });

@@ -57,6 +57,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .brand small{font-weight:300;font-size:11px;color:var(--text-soft);margin-top:6px;padding-top:6px;border-top:1px solid var(--edge-dark);box-shadow:0 1px 0 var(--edge-light) inset}
 .hero-brand{padding:38px 0 18px;text-align:center}
 .hero-brand .brand b{font-size:40px;font-weight:500}
+.hero-brand .version{margin-top:10px;font-size:10px;opacity:.7}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
 h1,h2,h3{margin:0;font-weight:500}
 h2{font-size:15px;color:var(--text-soft);letter-spacing:.02em}
@@ -358,6 +359,7 @@ body.swipe-lock .ly.now .text{font-size:clamp(19px,5vw,26px)}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
+const APP_VERSION = 'v18';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -832,7 +834,7 @@ function renderHome() {
       <span class="go">${ICON.chev}</span>
     </button>`).join('');
   app.innerHTML = `
-    <div class="hero-brand">${brand(true)}</div>
+    <div class="hero-brand">${brand(true)}<div class="eyebrow version" id="ver">${APP_VERSION}</div></div>
     <main class="view">
       <section class="stack">
         <div class="row between"><h2>내 대본</h2>${state.installPrompt ? '<button class="btn small" id="install">홈 화면에 추가</button>' : ''}</div>
@@ -1570,7 +1572,22 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 let toastT = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); state.installPrompt = e; if (state.view === 'home') render(); });
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch {} }
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  try {
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      const check = () => reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+      setInterval(check, 5 * 60 * 1000);
+    }).catch(() => {});
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading || !navigator.serviceWorker.controller) return; reloading = true;
+      // a new build took over: reload right away unless a presentation or a recording is in progress
+      if (state.view === 'stage' || state.view === 'record' || aiJob.running) toast('새 버전이 준비됐습니다. 홈으로 나가면 적용됩니다');
+      else location.reload();
+    });
+  } catch {}
+}
 
 route();
 </script>
