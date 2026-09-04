@@ -17,10 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Publish earcue/ to the gh-pages branch
+      - name: Assemble the site (earcue/ + lab/ as a sub-page)
+        run: |
+          rm -rf _site && mkdir -p _site && cp -R earcue/. _site/ && mkdir -p _site/lab && cp -R lab/. _site/lab/
+      - name: Publish to the gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./earcue
+          publish_dir: ./_site
           publish_branch: gh-pages
           force_orphan: true
