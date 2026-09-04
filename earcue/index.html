@@ -221,25 +221,24 @@ body.swipe-lock .status{min-height:20px;padding:2px 2px}
 .transport .btn + .btn{margin-left:3px}
 
 /* lyrics roll */
-.lyrics{position:relative;height:min(52vh,380px);border-radius:var(--r);overflow:hidden;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .25s}
+.lyrics{position:relative;height:min(64vh,540px);border-radius:var(--r);overflow:hidden;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .25s}
 .lyrics.speaking{box-shadow:var(--sink),0 0 0 1px rgba(241,243,246,.16),0 0 28px rgba(241,243,246,.12)}
 .ly-list{position:absolute;left:0;right:0;top:0;padding:0 18px;transition:transform .42s cubic-bezier(.22,.8,.26,1);will-change:transform;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 66%,transparent 84%);mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 66%,transparent 84%)}
-.ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:9px 0;transition:opacity .42s ease,color .42s ease,font-size .3s ease}
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 9%,#000 74%,transparent 87%);mask-image:linear-gradient(180deg,transparent 0,#000 9%,#000 74%,transparent 87%)}
+.ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:8px 0;transition:opacity .42s ease,color .42s ease,font-size .3s ease}
 .ly .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;letter-spacing:.04em}
-.ly .text{font-size:16px;line-height:1.5;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;transition:inherit}
-.ly.before .text{color:var(--text-dim)}
-.ly.d1{opacity:.9}
-.ly.d2{opacity:.55}
-.ly.far{opacity:.3}
-.ly.after.d1 .text{color:var(--text)}
+.ly .text{font-size:15.5px;line-height:1.5;color:var(--text-dim);word-break:keep-all;overflow-wrap:anywhere;transition:inherit}
+.ly.d1{opacity:.95}
+.ly.d2{opacity:.7}
+.ly.far{opacity:.45}
+.ly.after.d1 .text{color:var(--text-soft)}
 .ly.now{opacity:1}
 .ly.now .n{color:var(--led-now)}
-.ly.now .text{color:var(--lamp);font-size:clamp(21px,5.6vw,29px);line-height:1.45;text-shadow:0 0 18px rgba(241,243,246,.2)}
+.ly.now .text{color:#fff;font-size:clamp(21px,5.6vw,29px);line-height:1.45;text-shadow:0 0 20px rgba(255,255,255,.25)}
 .ly-foot{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 14px;background:linear-gradient(180deg,rgba(28,31,35,0),rgba(30,33,38,.96) 45%)}
 .ly-foot .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px}
 .ly-foot .tag .n{margin-left:auto;color:var(--text-dim);letter-spacing:.04em}
-body.swipe-lock .lyrics{height:min(40vh,300px)}
+body.swipe-lock .lyrics{height:max(280px,calc(100dvh - 430px))}
 body.swipe-lock .ly{padding:6px 0}
 body.swipe-lock .ly .text{font-size:14.5px}
 body.swipe-lock .ly.now .text{font-size:clamp(19px,5vw,26px)}
@@ -359,7 +358,7 @@ body.swipe-lock .ly.now .text{font-size:clamp(19px,5vw,26px)}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1165,7 +1164,7 @@ function updateCue() {
   const items = list.children;
   for (let k = 0; k < items.length; k++) { const d = k - i; items[k].className = 'ly' + (d === 0 ? ' now' : d < 0 ? ' before' : ' after') + (Math.abs(d) >= 3 ? ' far' : Math.abs(d) === 2 ? ' d2' : Math.abs(d) === 1 ? ' d1' : ''); }
   const cur = items[i]; if (cur) {
-    const y = box.clientHeight * 0.42 - (cur.offsetTop + cur.offsetHeight / 2); // keep the centre a little above the progress footer
+    const y = (box.clientHeight - 64) / 2 - (cur.offsetTop + cur.offsetHeight / 2); // keep the centre a little above the progress footer
     list.style.transform = `translateY(${Math.round(y)}px)`;
   }
   $('#lyLabel').textContent = i === n - 1 ? '마지막 문장' : '지금'; $('#lyNum').textContent = i + 1;
