@@ -169,7 +169,34 @@ select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-
 
 /* stage */
 .stage{gap:0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
-.stage.swipe-mode .cue,.stage.swipe-mode .stage-head,.stage.swipe-mode .status{touch-action:none}
+.stage.swipe-mode{touch-action:none;overscroll-behavior:none}
+.stage.swipe-mode .knob{touch-action:none}
+body.swipe-lock{overflow:hidden;height:100dvh}
+body.swipe-lock .app{height:100dvh;overflow:hidden}
+body.swipe-lock .topbar{padding-top:calc(6px + env(safe-area-inset-top));min-height:48px}
+body.swipe-lock .brand b{font-size:20px}
+body.swipe-lock .brand small{display:none}
+body.swipe-lock .stage-head{padding-bottom:6px}
+body.swipe-lock .cue{padding:6px 0}
+body.swipe-lock .cue.prev{display:none}
+body.swipe-lock .cue.now{padding:12px 16px 14px}
+body.swipe-lock .cue.now .text{font-size:clamp(19px,5vw,26px);min-height:2.6em}
+body.swipe-lock .cue.now .track{margin-top:10px}
+body.swipe-lock .cue.next .text{-webkit-line-clamp:2;font-size:14px}
+body.swipe-lock .transport .btn{height:52px}
+body.swipe-lock .deck{margin-top:8px;gap:10px}
+body.swipe-lock .knob{width:104px;height:104px}
+body.swipe-lock .knob .ticks i{transform-origin:50% 46px;top:4px;height:6px}
+body.swipe-lock .knob .ticks i.major{height:8px}
+body.swipe-lock .knob .labels span{transform-origin:50% 66px;top:-14px}
+body.swipe-lock .knob .cap{inset:16px}
+body.swipe-lock .knob-wrap{padding-top:12px;gap:2px}
+body.swipe-lock .knob-readout .val{font-size:17px}
+body.swipe-lock .knob-label{display:none}
+body.swipe-lock .deck .switch{padding:6px 0}
+body.swipe-lock .deck .switch .label small{display:none}
+body.swipe-lock .remote-line{display:none}
+body.swipe-lock .status{min-height:20px;padding:2px 2px}
 .stage-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:13px;color:var(--text-soft);padding:4px 0 14px;letter-spacing:.06em}
 .stage-head .counter{font-size:22px;color:var(--text);letter-spacing:.08em}
 .stage-head .counter small{font-size:13px;color:var(--text-dim);margin-left:4px}
@@ -759,6 +786,7 @@ function stopEverything() {
 const app = $('#app');
 function render() {
   app.className = 'app';
+  if (state.view !== 'stage') document.body.classList.remove('swipe-lock');
   if (state.view === 'home') renderHome();
   else if (state.view === 'edit') renderEditor();
   else if (state.view === 'record') renderRecord();
@@ -1034,6 +1062,8 @@ function renderAI() {
 function renderStage() {
   const s = current();
   app.classList.add('stage-app');
+  const gestureKeys = ['Swipe↑', 'Swipe↓', 'Swipe←', 'Swipe→', 'Tap', 'DoubleTap'];
+  document.body.classList.toggle('swipe-lock', gestureKeys.some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))));
   app.innerHTML = `
     ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="편집으로">${ICON.back}</button>`, title: brand(), right: `<button class="btn icon ghost" id="settings" aria-label="설정">${ICON.gear}</button>` })}
     <main class="view stage ${['Swipe↑', 'Swipe↓', 'Swipe←', 'Swipe→', 'Tap', 'DoubleTap'].some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))) ? 'swipe-mode' : ''}" id="stage" tabindex="0">
@@ -1458,7 +1488,8 @@ window.addEventListener('touchend', (e) => {
   if (!swipe) return; const t = e.changedTouches[0]; const dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, dt = performance.now() - swipe.t; const start = swipe; swipe = null;
   if (state.view !== 'stage' && state.view !== 'record') return;
   const onControl = !!start.target.closest('button,input,select,textarea,a,.knob,.switch,.rocker,.seg');
-  const cueArea = !!start.target.closest('.cue, .stage-head, .status, .hint');
+  // a ring injects its gesture at the screen centre, wherever that lands, so the whole stage counts
+  const cueArea = !start.target.closest('.knob, .sheet, .sheet-bg') && !sheetOpen;
   // a short still touch is a tap; a ring's centre button usually injects one (or two) at the screen centre
   if (dt < 450 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
     if (onControl) return; // the app's own buttons keep their click behaviour
