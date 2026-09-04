@@ -364,7 +364,12 @@ body.swipe-lock .ly{padding:6px 0}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'v26';
+const APP_VERSION = 'v27';
+/* Inside the Android app the web page runs in a WebView with Capacitor; native plugins replace the
+   browser's speech APIs and expose hardware keys. In a plain browser none of this exists. */
+const CAP = window.Capacitor || null;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const NP = (name) => (NATIVE && CAP.Plugins && CAP.Plugins[name]) || null;
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -667,8 +672,21 @@ const synth = window.speechSynthesis;
 const IS_ANDROID = /Android/i.test(navigator.userAgent);
 const IS_DESKTOP_CHROME = /Chrome\//.test(navigator.userAgent) && !/Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
 let voices = [];
-function loadVoices() { if (!synth) return; voices = synth.getVoices(); }
-if (synth) { loadVoices(); synth.onvoiceschanged = () => { loadVoices(); if (state.view === 'stage' && sheetOpen) renderSheet(); }; }
+function loadVoices() { if (NP('EarTts')) return; if (!synth) return; voices = synth.getVoices(); }
+if (synth && !NP('EarTts')) { loadVoices(); synth.onvoiceschanged = () => { loadVoices(); if (state.view === 'stage' && sheetOpen) renderSheet(); }; }
+if (NP('EarTts')) {
+  const P = NP('EarTts');
+  const loadNative = () => P.voices().then((r) => {
+    voices = (r.voices || []).filter((v) => !v.network).map((v) => ({ voiceURI: v.name, name: v.name.replace(/^ko-kr-/i, '').replace(/-/g, ' '), lang: v.lang })).sort((a, b) => (/^ko/i.test(b.lang) - /^ko/i.test(a.lang)) || a.name.localeCompare(b.name));
+    if (state.view === 'stage' && sheetOpen) renderSheet();
+  }).catch(() => {});
+  P.addListener('ready', loadNative); loadNative();
+  P.addListener('start', (e) => { const h = tts.native; if (h && h.id === e.id) h.onStart(); });
+  P.addListener('range', (e) => { const h = tts.native; if (h && h.id === e.id) h.onRange(e.end || e.start || 0); });
+  P.addListener('done', (e) => { const h = tts.native; if (h && h.id === e.id) h.onDone(); });
+  P.addListener('stop', (e) => { const h = tts.native; if (h && h.id === e.id) h.onStop(); });
+  P.addListener('error', (e) => { const h = tts.native; if (h && h.id === e.id) h.onError(e.detail || 'error'); });
+}
 function pickVoice() {
   if (!voices.length) return null;
   if (settings.voiceURI) { const v = voices.find((x) => x.voiceURI === settings.voiceURI); if (v) return v; }
@@ -678,8 +696,33 @@ function pickVoice() {
 const tts = {
   speaking: false, utter: null, t0: 0, charsPerSec: 5.5, lastError: '', // ko-KR calibrates itself as it speaks
   raf: 0, keepAlive: 0,
+  native: null,
+  speakNative(text, { onStart, onProgress, onEnd } = {}) {
+    const P = NP('EarTts'); const id = uid(); const rate = clamp(settings.rate, 0.5, 10);
+    const est = (text.length / this.charsPerSec / rate) * 1000; let boundaryIdx = -1, finished = false;
+    const finish = (cancelled) => {
+      if (finished) return; finished = true; cancelAnimationFrame(this.raf);
+      this.speaking = false; this.native = null; this.utter = null;
+      const dur = performance.now() - this.t0;
+      if (!cancelled && dur > 300 && text.length > 6) { const measured = text.length / (dur / 1000) / rate; this.charsPerSec = clamp(this.charsPerSec * 0.6 + measured * 0.4, 2.5, 12); }
+      onEnd && onEnd({ cancelled, dur, rate });
+    };
+    this.native = {
+      id,
+      onStart: () => { this.t0 = performance.now(); this.speaking = true; onStart && onStart();
+        const tick = () => { if (!this.speaking) return; const el = performance.now() - this.t0; onProgress && onProgress(boundaryIdx >= 0 ? boundaryIdx / text.length : clamp(el / est, 0, 0.97)); this.raf = requestAnimationFrame(tick); };
+        this.raf = requestAnimationFrame(tick); },
+      onRange: (i) => { boundaryIdx = i; },
+      onDone: () => { this.lastError = ''; finish(false); },
+      onStop: () => { this.lastError = ''; finish(true); },
+      onError: (d) => { this.lastError = d; finish(true); },
+    };
+    this.utter = { _byUs: false, native: true }; this.t0 = performance.now();
+    P.speak({ text, id, rate, pitch: 1, voice: settings.voiceURI || '' }).catch((e) => { this.lastError = (e && e.message) || 'tts'; toast('기기 음성을 시작할 수 없습니다'); finish(true); });
+  },
   speak(text, { onStart, onProgress, onEnd } = {}) {
     this.stop();
+    if (NP('EarTts')) return this.speakNative(text, { onStart, onProgress, onEnd });
     if (!synth) { toast('이 브라우저는 음성 합성을 지원하지 않습니다'); onEnd && onEnd({ cancelled: true }); return; }
     const u = new SpeechSynthesisUtterance(text);
     const v = pickVoice(); if (v) u.voice = v;
@@ -724,6 +767,7 @@ const tts = {
   },
   stop() {
     cancelAnimationFrame(this.raf); clearInterval(this.keepAlive);
+    if (this.native) { this.native = null; NP('EarTts') && NP('EarTts').stop().catch(() => {}); this.speaking = false; this.utter = null; return; }
     if (this.utter) this.utter._byUs = true; // an intentional stop is not a cutoff
     if (synth && (synth.speaking || synth.pending)) synth.cancel();
     this.speaking = false; this.utter = null;
@@ -759,8 +803,9 @@ function tailMatch(sentence, heard) {
 /* The recognizer and the earpiece fight over audio on Android (mic focus, Bluetooth HFP switch), so the
    recognizer runs only between reads: it is suspended while TTS speaks and resumed when the read ends. */
 const listener = {
-  rec: null, on: false, suspended: false, heard: '', skip: 0, restartTimer: 0, onMatch: null,
+  rec: null, on: false, suspended: false, heard: '', skip: 0, restartTimer: 0, onMatch: null, nativeFinal: '',
   start() {
+    if (NP('EarSpeech')) return this.startNative();
     if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않습니다'); return false; }
     if (this.rec) return true;
     const r = new SR();
@@ -778,10 +823,33 @@ const listener = {
     return true;
   },
   // new sentence: forget what was heard so far without restarting the recognizer
-  mark() { this.heard = ''; },
-  suspend() { if (!this.rec || this.suspended) return; this.suspended = true; clearTimeout(this.restartTimer); try { this.rec.abort(); } catch {} },
-  resume() { if (!this.rec || !this.suspended) return; this.suspended = false; this.heard = ''; this.skip = 0; clearTimeout(this.restartTimer); this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) { try { this.rec.start(); } catch {} } }, IS_ANDROID ? 400 : 150); },
-  stop() { this.on = false; this.suspended = false; clearTimeout(this.restartTimer); if (this.rec) { try { this.rec.onend = null; this.rec.abort(); } catch {} } this.rec = null; this.heard = ''; this.skip = 0; },
+  mark() { this.heard = ''; this.nativeFinal = ''; },
+  suspend() {
+    if (this.suspended) return; this.suspended = true; clearTimeout(this.restartTimer);
+    if (this.rec === 'native') { NP('EarSpeech').stop().catch(() => {}); return; }
+    if (this.rec) { try { this.rec.abort(); } catch {} }
+  },
+  resume() {
+    if (!this.suspended) return; this.suspended = false; this.heard = ''; this.nativeFinal = ''; this.skip = 0; clearTimeout(this.restartTimer);
+    if (this.rec === 'native') { this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) NP('EarSpeech').start({ lang: 'ko-KR' }).catch(() => {}); }, 300); return; }
+    if (this.rec) this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) { try { this.rec.start(); } catch {} } }, IS_ANDROID ? 400 : 150);
+  },
+  stop() {
+    this.on = false; this.suspended = false; clearTimeout(this.restartTimer);
+    if (this.rec === 'native') { NP('EarSpeech').stop().catch(() => {}); }
+    else if (this.rec) { try { this.rec.onend = null; this.rec.abort(); } catch {} }
+    this.rec = null; this.heard = ''; this.nativeFinal = ''; this.skip = 0;
+  },
+  startNative() {
+    const P = NP('EarSpeech');
+    if (!this.nativeBound) {
+      this.nativeBound = true;
+      P.addListener('result', (e) => { if (this.rec !== 'native' || this.suspended) return; if (e.final) { this.nativeFinal = (this.nativeFinal + ' ' + e.text).trim(); this.heard = this.nativeFinal; } else this.heard = (this.nativeFinal + ' ' + e.text).trim(); this.onMatch && this.onMatch(this.heard); });
+    }
+    this.rec = 'native'; this.on = true; this.suspended = false; this.heard = ''; this.nativeFinal = '';
+    P.start({ lang: 'ko-KR' }).catch((e) => { toast(/denied/.test(String(e && e.message)) ? '마이크 사용이 허용되지 않았습니다' : '음성 인식을 시작할 수 없습니다'); this.stop(); settings.listen = false; saveSettings(); renderStageStatus(); });
+    return true;
+  },
 };
 
 /* ---------------- app state / router ---------------- */
@@ -810,7 +878,7 @@ window.addEventListener('hashchange', route);
 const current = () => scripts.find((s) => s.id === state.scriptId);
 
 function stopEverything() {
-  stopVoice(); listener.stop(); recorder.release(); media.stop(); state.recording = false; state.ttsNote = ''; clearTimeout(state.autoTimer); state.autoDue = 0;
+  stopVoice(); listener.stop(); recorder.release(); media.stop(); state.recording = false; state.ttsNote = ''; setVolumeCapture(false); clearTimeout(state.autoTimer); state.autoDue = 0;
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   closeSheet(true);
 }
@@ -843,7 +911,7 @@ function renderHome() {
       <span class="go">${ICON.chev}</span>
     </button>`).join('');
   app.innerHTML = `
-    <div class="hero-brand">${brand(true)}<div class="eyebrow version" id="ver">${APP_VERSION}</div></div>
+    <div class="hero-brand">${brand(true)}<div class="eyebrow version" id="ver">${APP_VERSION}${NATIVE ? ' · 앱' : ''}</div></div>
     <main class="view">
       <section class="stack">
         <div class="row between"><h2>내 대본</h2>${state.installPrompt ? '<button class="btn small" id="install">홈 화면에 추가</button>' : ''}</div>
@@ -1101,7 +1169,7 @@ const WIZ_STEPS = [
 ];
 const wizard = { step: 0, got: {}, dup: '' };
 function renderWizard() {
-  document.body.classList.add('swipe-lock');
+  document.body.classList.add('swipe-lock'); setVolumeCapture(true);
   const done = wizard.step >= WIZ_STEPS.length; const st = WIZ_STEPS[wizard.step];
   state.learning = done ? null : st.id;
   app.innerHTML = `
@@ -1149,7 +1217,7 @@ function diagLog(text) {
   const el = $('#diagList'); if (el) el.textContent = diag.rows.join('\n');
 }
 function renderDiag() {
-  document.body.classList.add('swipe-lock');
+  document.body.classList.add('swipe-lock'); setVolumeCapture(true);
   app.innerHTML = `
     ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="뒤로">${ICON.back}</button>`, title: brand(), right: '' })}
     <main class="view" style="touch-action:none">
@@ -1185,7 +1253,7 @@ function renderDiag() {
 function applyFontSize() { document.documentElement.style.setProperty('--script-size', clamp(settings.fontSize || 18, 12, 40) + 'px'); }
 function renderStage() {
   const s = current();
-  app.classList.add('stage-app'); applyFontSize();
+  app.classList.add('stage-app'); applyFontSize(); setVolumeCapture(true);
   const gestureKeys = ['Swipe↑', 'Swipe↓', 'Swipe←', 'Swipe→', 'Tap', 'DoubleTap'];
   document.body.classList.toggle('swipe-lock', gestureKeys.some((k) => Object.values(settings.keymap).some((arr) => arr.includes(k))));
   app.innerHTML = `
@@ -1251,7 +1319,7 @@ function keyHints(playLabel = '읽기') {
   const show = (arr) => arr.slice(0, 2).map((k) => `<span class="key">${esc(keyName(k))}</span>`).join(' ');
   return `${show(km.next)} 다음 <span class="sep">·</span> ${show(km.prev)} 이전 <span class="sep">·</span> ${show(km.play)} ${playLabel}`;
 }
-function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Swipe←': '왼쪽으로 쓸기', 'Swipe→': '오른쪽으로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
+function keyName(k) { return ({ 'VolumeUp': '볼륨↑', 'VolumeDown': '볼륨↓', 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Swipe←': '왼쪽으로 쓸기', 'Swipe→': '오른쪽으로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
 
 /* The stage is a scrolling script: every line the same size, the current one in neon green.
    On advance the list scrolls so the current line sits at the centre of the block; it can also be scrolled by hand. */
@@ -1504,7 +1572,7 @@ function renderSheet() {
     <h2>리모컨 버튼</h2>
     <button class="btn lamp" id="openWizard" style="width:100%">리모컨 설정 마법사 (버튼 3개 누르기)</button>
     ${keyRow('next', '다음')}${keyRow('prev', '이전')}${keyRow('play', '읽기')}
-    <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기·탭(쇼츠 모드 링 리모컨), 게임패드 신호를 모두 받습니다. 링 리모컨은 기본값으로 위로 쓸기 = 다음, 아래로 쓸기 = 이전, 가운데 탭 = 읽기입니다. 길게 누르기(볼륨·화면 잠금)는 브라우저가 받지 못합니다. 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
+    <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기·탭(쇼츠 모드 링 리모컨), 게임패드 신호를 모두 받습니다. 링 리모컨은 기본값으로 위로 쓸기 = 다음, 아래로 쓸기 = 이전, 가운데 탭 = 읽기입니다. ${NATIVE ? '앱에서는 볼륨 키(링 길게 누르기)도 버튼으로 배울 수 있습니다.' : '길게 누르기(볼륨·화면 잠금)는 브라우저가 받지 못합니다.'} 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
     <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><span class="row"><button class="btn small" id="openDiag">진단 화면</button><button class="btn ghost small" id="resetKeys">기본값으로</button></span></div>
     <div class="sig-mon" id="sigMon">${signalMonitor()}</div>
     <div class="row" style="margin-top:18px"><button class="btn lamp grow" id="closeSheet">닫기</button></div>`;
@@ -1571,6 +1639,9 @@ function handleSignal(key, e) {
   act(action);
 }
 window.addEventListener('keydown', (e) => { const k = keyFromEvent(e); lastKeyDownAt = performance.now(); logSignal('keydown', k, e); handleSignal(k, e); }, true);
+// keys the Android shell captures (volume buttons, media buttons) arrive here
+window.__earNativeKey = (k) => { diagLog(`native   key=${k}`); logSignal('native', k, { code: 'android' }); handleSignal(k, { preventDefault() {}, target: document.body }); };
+function setVolumeCapture(on) { const P = NP('EarKeys'); if (P) P.capture({ volume: !!on }).catch(() => {}); }
 window.addEventListener('keyup', (e) => {
   const k = keyFromEvent(e); logSignal('keyup', k, e);
   // a device that never sends keydown still gets handled on keyup
@@ -1616,7 +1687,7 @@ window.addEventListener('scroll', (e) => {
 const media = {
   el: null, ready: false,
   start() {
-    if (this.ready || !('mediaSession' in navigator) || (!inputView())) return;
+    if (NATIVE || this.ready || !('mediaSession' in navigator) || !inputView()) return;
     const a = new Audio(URL.createObjectURL(wavBlob(new Float32Array(4000), 8000))); a.loop = true; a.volume = 0.05; this.el = a;
     const acts = { nexttrack: 'Media:next', previoustrack: 'Media:prev', seekforward: 'Media:next', seekbackward: 'Media:prev', play: 'Media:play', pause: 'Media:play', stop: 'Media:play' };
     for (const [action, k] of Object.entries(acts)) {
@@ -1689,7 +1760,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 let toastT = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); state.installPrompt = e; if (state.view === 'home') render(); });
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
   try {
     navigator.serviceWorker.register('sw.js').then((reg) => {
       const check = () => reg.update().catch(() => {});

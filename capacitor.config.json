@@ -1,0 +1,12 @@
+{
+  "appId": "com.orrket.earcue",
+  "appName": "EarCue",
+  "webDir": "earcue",
+  "android": {
+    "backgroundColor": "#2E3238",
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EarCue</string>
+    <string name="title_activity_main">EarCue</string>
+    <string name="package_name">com.orrket.earcue</string>
+    <string name="custom_url_scheme">com.orrket.earcue</string>
+</resources>

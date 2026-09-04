@@ -68,7 +68,24 @@ cd earcue && python3 -m http.server 8765
 - DOCX 읽기는 라이브러리를 인터넷에서 불러오므로 온라인에서만 됩니다. PDF는 아직 지원하지 않습니다.
 - 브라우저는 볼륨 버튼 등 미디어 키를 받지 못합니다. 그런 키만 보내는 리모컨은 안드로이드 앱 단계에서 지원합니다.
 
-## 안드로이드 앱으로 가는 길
+## 안드로이드 앱 (Capacitor)
+
+웹앱을 그대로 감싼 안드로이드 앱이 `android/`에 있습니다. 네이티브로 보강한 부분:
+
+- `EarTtsPlugin` — 안드로이드 TextToSpeech 엔진을 직접 사용 (오프라인, 속도 정밀, 진행 위치 이벤트)
+- `EarSpeechPlugin` — 안드로이드 SpeechRecognizer, 가능하면 온디바이스 인식 (인터넷 불필요, 시작음 없음)
+- `EarKeysPlugin` + `MainActivity` — 발표·녹음·설정 화면에서 볼륨 키와 미디어 키를 리모컨 신호로 전달, 화면 항상 켜기
+- 마이크 권한(RECORD_AUDIO)은 녹음·말 인식을 처음 켤 때 요청
+
+빌드는 GitHub Actions(`.github/workflows/android.yml`)가 합니다. `main`에 푸시하면 디버그 APK가 만들어져 저장소의 **Releases → android-latest**에 `EarCue-debug.apk`로 올라갑니다. 폰에서 그 파일을 내려받아 설치하면 됩니다(출처를 알 수 없는 앱 설치 허용 필요). 로컬에서 빌드하려면 Android Studio에서 `android/` 폴더를 열면 됩니다.
+
+```bash
+npm install && npx cap sync android && npx cap open android
+```
+
+Play 스토어 배포는 릴리스 서명 키(keystore)를 만들어 워크플로 시크릿에 넣는 단계가 추가로 필요합니다.
+
+## 이전 계획 (참고)
 
 1. 이 PWA를 HTTPS에 올리고 **TWA(Trusted Web Activity)** 또는 **Capacitor**로 감싸면 Play 스토어용 APK/AAB를 만들 수 있습니다. 화면과 로직은 그대로 재사용합니다.
 2. 네이티브 단계에서 바꿀 것: 안드로이드 `TextToSpeech` API(오프라인, 속도 제어 정밀), `SpeechRecognizer` 온디바이스 인식, 미디어 키·볼륨 키 수신, 화면 꺼진 상태에서도 동작하는 포그라운드 서비스, 블루투스 HID 장치 목록 표시.

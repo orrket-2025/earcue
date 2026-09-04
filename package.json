@@ -1,0 +1,15 @@
+{
+  "name": "earcue",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EarCue 이어큐 — 귓속 프롬프터",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/cli": "^6.2.2",
+    "@capacitor/core": "^6.2.2"
+  }
+}
