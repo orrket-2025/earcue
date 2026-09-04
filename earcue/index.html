@@ -220,29 +220,27 @@ body.swipe-lock .status{min-height:20px;padding:2px 2px}
 .transport .btn svg{width:22px;height:22px}
 .transport .btn + .btn{margin-left:3px}
 
-/* lyrics roll */
+/* scrolling script */
+:root{--neon:#5CFF9D}
 .lyrics{position:relative;height:min(64vh,540px);border-radius:var(--r);overflow:hidden;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);transition:box-shadow .25s}
-.lyrics.speaking{box-shadow:var(--sink),0 0 0 1px rgba(241,243,246,.16),0 0 28px rgba(241,243,246,.12)}
-.ly-list{position:absolute;left:0;right:0;top:0;padding:0 18px;transition:transform .42s cubic-bezier(.22,.8,.26,1);will-change:transform;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 9%,#000 74%,transparent 87%);mask-image:linear-gradient(180deg,transparent 0,#000 9%,#000 74%,transparent 87%)}
-.ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:8px 0;transition:opacity .42s ease,color .42s ease,font-size .3s ease}
+.lyrics.speaking{box-shadow:var(--sink),0 0 0 1px rgba(92,255,157,.25),0 0 28px rgba(92,255,157,.12)}
+.ly-list{position:absolute;inset:0;padding:0 18px 64px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%);mask-image:linear-gradient(180deg,transparent 0,#000 8%,#000 76%,transparent 88%)}
+.ly-list::-webkit-scrollbar{display:none}
+.ly-pad{height:42%}
+.ly{display:grid;grid-template-columns:26px 1fr;gap:0 8px;align-items:baseline;padding:8px 0;transition:color .3s ease}
 .ly .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:right;letter-spacing:.04em}
-.ly .text{font-size:15.5px;line-height:1.5;color:var(--text-dim);word-break:keep-all;overflow-wrap:anywhere;transition:inherit}
-.ly.d1{opacity:.95}
-.ly.d2{opacity:.7}
-.ly.far{opacity:.45}
-.ly.after.d1 .text{color:var(--text-soft)}
-.ly.now{opacity:1}
-.ly.now .n{color:var(--led-now)}
-.ly.now .text{color:#fff;font-size:clamp(21px,5.6vw,29px);line-height:1.45;text-shadow:0 0 20px rgba(255,255,255,.25)}
+.ly .text{font-size:clamp(17px,4.6vw,21px);line-height:1.55;color:var(--text-soft);word-break:keep-all;overflow-wrap:anywhere;transition:color .3s ease}
+.ly.before .text{color:var(--text-dim)}
+.ly.now .n{color:var(--neon)}
+.ly.now .text{color:var(--neon);font-weight:500;text-shadow:0 0 14px rgba(92,255,157,.35)}
 .ly-foot{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 14px;background:linear-gradient(180deg,rgba(28,31,35,0),rgba(30,33,38,.96) 45%)}
 .ly-foot .tag{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px}
 .ly-foot .tag .n{margin-left:auto;color:var(--text-dim);letter-spacing:.04em}
 body.swipe-lock .lyrics{height:max(280px,calc(100dvh - 430px))}
+body.swipe-lock .ly-list{touch-action:none}
 body.swipe-lock .ly{padding:6px 0}
-body.swipe-lock .ly .text{font-size:14.5px}
-body.swipe-lock .ly.now .text{font-size:clamp(19px,5vw,26px)}
-@media (prefers-reduced-motion:reduce){.ly-list,.ly{transition:none}}
+body.swipe-lock .ly .text{font-size:clamp(15px,4.2vw,18px)}
 
 /* knob */
 .deck{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;margin-top:18px}
@@ -358,7 +356,7 @@ body.swipe-lock .ly.now .text{font-size:clamp(19px,5vw,26px)}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1098,7 +1096,7 @@ function renderStage() {
         <span id="keyflash" class="key x" aria-label="마지막 리모컨 신호">·</span>
       </div>
       <div class="lyrics" id="lyrics">
-        <div class="ly-list" id="lyList">${s.sentences.map((x, k) => `<div class="ly" data-k="${k}"><span class="n">${k + 1}</span><div class="text">${esc(x.text) || '<span class="dim">…</span>'}</div></div>`).join('')}</div>
+        <div class="ly-list" id="lyList"><div class="ly-pad"></div>${s.sentences.map((x, k) => `<div class="ly" data-k="${k}"><span class="n">${k + 1}</span><div class="text">${esc(x.text) || '<span class="dim">…</span>'}</div></div>`).join('')}<div class="ly-pad"></div></div>
         <div class="ly-foot"><div class="tag"><i class="led now" id="ledNow"></i><span id="lyLabel">지금</span><span class="n" id="lyNum"></span></div>
           <div class="track" aria-hidden="true"><div class="fill" id="fill"></div><div class="thumb" id="thumb"></div></div></div>
       </div>
@@ -1154,18 +1152,19 @@ function keyHints(playLabel = '읽기') {
 }
 function keyName(k) { return ({ 'Media:next': '다음곡', 'Media:prev': '이전곡', 'Media:play': '재생/일시정지', 'Swipe↑': '위로 쓸기', 'Swipe↓': '아래로 쓸기', 'Tap': '탭', 'DoubleTap': '두 번 탭', 'Swipe←': '왼쪽으로 쓸기', 'Swipe→': '오른쪽으로 쓸기', 'Wheel↓': '휠↓', 'Wheel↑': '휠↑', 'Scroll↓': '스크롤↓', 'Scroll↑': '스크롤↑', 'Mouse0': '클릭', 'Mouse1': '가운데클릭', 'Mouse2': '우클릭', 'Mouse3': '마우스4', 'Mouse4': '마우스5', ' ': 'Space', 'ArrowRight': '→', 'ArrowLeft': '←', 'ArrowUp': '↑', 'ArrowDown': '↓', 'PageDown': 'PgDn', 'PageUp': 'PgUp', '.': '.', 'Escape': 'Esc' })[k] || (k.length === 1 ? k.toUpperCase() : k); }
 
-/* The stage rolls the whole script like a lyrics screen: the current line sits bright at the centre of the
-   block, the line below waits dimmer, and on advance the list slides up so the next line brightens into place. */
+/* The stage is a scrolling script: every line the same size, the current one in neon green.
+   On advance the list scrolls so the current line sits at the centre of the block; it can also be scrolled by hand. */
 function updateCue() {
   const s = current(); if (!s || state.view !== 'stage') return;
   const i = state.idx; const n = s.sentences.length;
   $('#cur').textContent = String(i + 1).padStart(2, '0');
-  const list = $('#lyList'), box = $('#lyrics'); if (!list) return;
-  const items = list.children;
-  for (let k = 0; k < items.length; k++) { const d = k - i; items[k].className = 'ly' + (d === 0 ? ' now' : d < 0 ? ' before' : ' after') + (Math.abs(d) >= 3 ? ' far' : Math.abs(d) === 2 ? ' d2' : Math.abs(d) === 1 ? ' d1' : ''); }
+  const list = $('#lyList'); if (!list) return;
+  const items = list.querySelectorAll('.ly');
+  for (let k = 0; k < items.length; k++) items[k].className = 'ly' + (k === i ? ' now' : k < i ? ' before' : ' after');
   const cur = items[i]; if (cur) {
-    const y = (box.clientHeight - 64) / 2 - (cur.offsetTop + cur.offsetHeight / 2); // keep the centre a little above the progress footer
-    list.style.transform = `translateY(${Math.round(y)}px)`;
+    const top = cur.offsetTop + cur.offsetHeight / 2 - (list.clientHeight - 64) / 2;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    list.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
   }
   $('#lyLabel').textContent = i === n - 1 ? '마지막 문장' : '지금'; $('#lyNum').textContent = i + 1;
   setProgress(0);
