@@ -327,6 +327,13 @@ body.swipe-lock .ly{padding:6px 0}
 .keymap-row .empty-keys{font-size:12px;color:var(--text-dim)}
 .sig-mon{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font-family:var(--mono);font-size:11.5px}
 .sig-mon .sig{display:flex;align-items:center;gap:10px}
+.wiz-title{font-size:28px;font-weight:500;margin-top:4px}
+.wiz-desc{font-size:16px;color:var(--text-soft);line-height:1.6}
+.wiz-wait{display:flex;align-items:center;gap:10px;padding:18px 0}
+.wiz-row{padding:8px 0;border-top:1px solid rgba(0,0,0,.25)}
+.wiz-row:first-child{border-top:0}
+.wiz-row.cur{color:var(--lamp)}
+.warn-text{color:#FFB0A9}
 .diag-list{margin:0;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,var(--well-deep),var(--well));box-shadow:var(--sink);font:12px/1.7 var(--mono);color:var(--text);white-space:pre-wrap;word-break:break-all;min-height:50vh;max-height:66vh;overflow:auto}
 .learn-note{font-family:var(--mono);font-size:12px;color:var(--lamp);animation:blink 1s steps(2,start) infinite}
 
@@ -357,7 +364,7 @@ body.swipe-lock .ly{padding:6px 0}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'v23';
+const APP_VERSION = 'v25';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -790,6 +797,7 @@ async function route() {
   stopEverything();
   const seq = ++routeSeq;
   if (view === 'diag') { state.view = 'diag'; render(); return; }
+  if (view === 'setup') { state.view = 'setup'; wizard.step = 0; wizard.got = {}; wizard.dup = ''; render(); return; }
   if (['edit', 'stage', 'record', 'ai'].includes(view) && scripts.find((s) => s.id === id)) {
     state.view = view; state.scriptId = id;
     if (view !== 'edit') { state.idx = clamp(state.idx, 0, current().sentences.length - 1); state.progress = 0; state.startedAt = 0; }
@@ -817,6 +825,7 @@ function render() {
   else if (state.view === 'record') renderRecord();
   else if (state.view === 'ai') renderAI();
   else if (state.view === 'diag') renderDiag();
+  else if (state.view === 'setup') renderWizard();
   else renderStage();
 }
 
@@ -1082,6 +1091,52 @@ function renderAI() {
     catch (e) { aiJob.running = false; toast(e.message); }
     renderAI();
   };
+}
+
+/* ---- remote setup wizard: press each button once, the app binds whatever signal arrives ---- */
+const WIZ_STEPS = [
+  { id: 'prev', title: '이전 버튼', desc: '리모컨(링)의 이전 버튼을 한 번 누르세요' },
+  { id: 'next', title: '다음 버튼', desc: '이번에는 다음 버튼을 한 번 누르세요' },
+  { id: 'play', title: '읽기 버튼', desc: '현재 문장을 다시 읽을 버튼(링은 가운데 버튼)을 한 번 누르세요' },
+];
+const wizard = { step: 0, got: {}, dup: '' };
+function renderWizard() {
+  document.body.classList.add('swipe-lock');
+  const done = wizard.step >= WIZ_STEPS.length; const st = WIZ_STEPS[wizard.step];
+  state.learning = done ? null : st.id;
+  app.innerHTML = `
+    ${topbar({ left: `<button class="btn icon ghost" id="back" aria-label="뒤로">${ICON.back}</button>`, title: brand(), right: `<span class="mono rec-count"><b>${Math.min(wizard.step + 1, 3)}</b>/3</span>` })}
+    <main class="view" style="touch-action:none">
+      <div class="eyebrow">리모컨 설정</div>
+      ${done ? `
+        <h1 class="wiz-title">설정이 끝났습니다</h1>
+        <p class="hint">버튼마다 아래 신호로 연결했습니다. 발표 화면에서 바로 써 보세요.</p>
+        <div class="panel stack">${WIZ_STEPS.map((x) => `<div class="row between"><span>${x.title}</span><span class="key ${wizard.got[x.id] ? 'lit' : ''}">${esc(wizard.got[x.id] ? keyName(wizard.got[x.id]) : '건너뜀')}</span></div>`).join('')}</div>
+        <div class="row"><button class="btn grow" id="wizAgain">처음부터 다시</button><button class="btn lamp grow" id="wizDone">발표 화면으로</button></div>
+      ` : `
+        <h1 class="wiz-title">${st.title}</h1>
+        <p class="wiz-desc">${st.desc}</p>
+        <div class="wiz-wait"><i class="led now blink"></i><span class="learn-note">신호를 기다리는 중…</span></div>
+        ${wizard.dup ? `<p class="hint warn-text">${esc(wizard.dup)}</p>` : ''}
+        <div class="stack" style="margin-top:auto">
+          <div class="panel">${WIZ_STEPS.map((x, i) => `<div class="row between wiz-row ${i === wizard.step ? 'cur' : ''}"><span>${x.title}</span><span class="key ${wizard.got[x.id] ? 'lit' : 'x'}">${esc(wizard.got[x.id] ? keyName(wizard.got[x.id]) : i < wizard.step ? '건너뜀' : '·')}</span></div>`).join('')}</div>
+          <div class="row"><button class="btn small ghost" id="wizSkip">이 버튼 건너뛰기</button><span class="hint grow">손가락으로 화면을 건드리면 그 터치가 잡힐 수 있으니 리모컨만 눌러 주세요.</span></div>
+        </div>
+      `}
+    </main>`;
+  $('#back').onclick = () => { state.learning = null; history.length > 1 ? history.back() : go('/'); };
+  if (done) { $('#wizAgain').onclick = () => { wizard.step = 0; wizard.got = {}; wizard.dup = ''; renderWizard(); }; $('#wizDone').onclick = () => { const s = current(); go(s ? '/stage/' + s.id : '/'); }; }
+  else $('#wizSkip').onclick = () => { wizard.step++; wizard.dup = ''; renderWizard(); };
+  media.start();
+}
+function wizardDuplicate(id, key, otherId) {
+  wizard.dup = `"${keyName(key)}"는 이미 ${ACTION_LABEL[otherId]} 버튼의 신호입니다. 두 버튼이 같은 신호를 보내고 있어 구분할 수 없습니다. 링의 모드를 바꾸거나 다른 버튼을 눌러 보세요. (마지막 신호: ${esc(lastGestureInfo)})`;
+  renderWizard();
+}
+function wizardLearned(id, key) {
+  wizard.got[id] = key; wizard.dup = ''; wizard.step++;
+  if (navigator.vibrate) navigator.vibrate(30);
+  renderWizard();
 }
 
 /* ---- remote diagnostics: every raw input, in order, so an unknown remote can be understood ---- */
@@ -1446,6 +1501,7 @@ function renderSheet() {
       <div class="stepper"><button class="btn" id="leadDown">−</button><span class="val" id="leadVal">${settings.lead.toFixed(1)}s</span><button class="btn" id="leadUp">+</button></div></div>
     <p class="hint">읽어준 시간과 속도로 실제 말하는 시간을 추정합니다. 몇 문장 지나면 더 정확해집니다.</p>
     <h2>리모컨 버튼</h2>
+    <button class="btn lamp" id="openWizard" style="width:100%">리모컨 설정 마법사 (버튼 3개 누르기)</button>
     ${keyRow('next', '다음')}${keyRow('prev', '이전')}${keyRow('play', '읽기')}
     <p class="hint" style="margin-top:8px">리모컨을 휴대폰 블루투스에 연결한 뒤 버튼을 눌러 보세요. 키보드(PPT), 마우스 클릭, 휠, 음악 키(다음곡·이전곡·재생), 화면 쓸기·탭(쇼츠 모드 링 리모컨), 게임패드 신호를 모두 받습니다. 링 리모컨은 기본값으로 위로 쓸기 = 다음, 아래로 쓸기 = 이전, 가운데 탭 = 읽기입니다. 길게 누르기(볼륨·화면 잠금)는 브라우저가 받지 못합니다. 음악 키는 발표 화면을 한 번 터치한 뒤부터 잡힙니다. 아래에 아무것도 안 찍히면 리모컨의 모드를 바꿔 보세요.</p>
     <div class="row between" style="margin-top:8px"><span class="eyebrow">받은 신호</span><span class="row"><button class="btn small" id="openDiag">진단 화면</button><button class="btn ghost small" id="resetKeys">기본값으로</button></span></div>
@@ -1461,6 +1517,7 @@ function renderSheet() {
   sh.querySelectorAll('[data-learn]').forEach((b) => b.onclick = () => { state.learning = b.dataset.learn; renderSheet(); });
   sh.querySelectorAll('[data-unkey]').forEach((b) => b.onclick = () => { const [id, k] = b.dataset.unkey.split(/:(.*)/); settings.keymap[id] = settings.keymap[id].filter((x) => x !== k); saveSettings(); renderSheet(); });
   $('#openDiag').onclick = () => { closeSheet(true); go('/diag'); };
+  $('#openWizard').onclick = () => { closeSheet(true); go('/setup'); };
   $('#resetKeys').onclick = () => { settings.keymap = JSON.parse(JSON.stringify(DEFAULT_KEYMAP)); saveSettings(); renderSheet(); };
   $('#closeSheet').onclick = () => { closeSheet(); renderStage(); };
 }
@@ -1469,6 +1526,7 @@ function renderSheet() {
    Presentation remotes reach the page as keyboard keys, but some Android builds hand over an empty key name
    or only a scroll gesture. Every input path is folded into one "signal" so the learn mode and the keymap
    can use whichever the remote actually sends. */
+const inputView = () => state.view === 'stage' || state.view === 'record' || state.view === 'setup';
 const KEYCODE_MAP = { 33: 'PageUp', 34: 'PageDown', 37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 32: ' ', 13: 'Enter', 27: 'Escape', 116: 'F5', 190: '.', 66: 'b', 9: 'Tab' };
 function keyFromEvent(e) {
   let k = e.key;
@@ -1489,12 +1547,15 @@ const ACTION_LABEL = { next: '다음', prev: '이전', play: '읽기' };
 let lastKeyDownAt = 0;
 function handleSignal(key, e) {
   if (!key) return;
-  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (!inputView()) return;
   if (state.learning) {
     e.preventDefault();
     const id = state.learning; const km = settings.keymap;
+    if (state.view === 'setup') { const other = Object.entries(wizard.got).find(([k, v]) => k !== id && v === key); if (other) { wizardDuplicate(id, key, other[0]); return; } }
     for (const k of Object.keys(km)) km[k] = km[k].filter((x) => x !== key);
-    km[id].unshift(key); saveSettings(); state.lastKey = key; state.learning = null; renderSheet(); toast(`"${keyName(key)}" 버튼을 ${ACTION_LABEL[id]}에 연결했습니다`);
+    km[id].unshift(key); saveSettings(); state.lastKey = key; state.learning = null;
+    if (state.view === 'setup') { wizardLearned(id, key); return; }
+    renderSheet(); toast(`"${keyName(key)}" 버튼을 ${ACTION_LABEL[id]}에 연결했습니다`);
     return;
   }
   if (sheetOpen) { if (key === 'Escape') closeSheet(); return; }
@@ -1515,7 +1576,7 @@ window.addEventListener('keyup', (e) => {
 }, true);
 let lastWheelAt = 0;
 window.addEventListener('wheel', (e) => {
-  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (!inputView()) return;
   const k = e.deltaY > 0 ? 'Wheel↓' : e.deltaY < 0 ? 'Wheel↑' : '';
   if (!k) return;
   const km = settings.keymap; const mapped = state.learning || km.next.includes(k) || km.prev.includes(k) || km.play.includes(k);
@@ -1528,7 +1589,7 @@ const isMapped = (k) => { const km = settings.keymap; return !!state.learning ||
 /* Remotes in mouse mode: their buttons arrive as mouse clicks, which a phone's finger taps never are. */
 window.addEventListener('pointerdown', (e) => {
   if (e.pointerType !== 'mouse') { lastTouchAt = performance.now(); return; }
-  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (!inputView()) return;
   const k = 'Mouse' + e.button; logSignal('mouse', k, e);
   if (!isMapped(k)) return;
   if (!state.learning && e.target.closest('button,input,select,textarea,.knob,.sheet')) return; // real mouse use of the UI
@@ -1538,7 +1599,7 @@ window.addEventListener('touchstart', () => { lastTouchAt = performance.now(); }
 /* Scrolling that no finger and no wheel caused: the system moved the page for the remote. */
 let lastTouchAt = 0, lastScrollTop = new WeakMap(), lastScrollAt = 0;
 window.addEventListener('scroll', (e) => {
-  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (!inputView()) return;
   const el = e.target === document ? document.scrollingElement : e.target; if (!el) return;
   const top = el.scrollTop, prev = lastScrollTop.get(el); lastScrollTop.set(el, top);
   if (prev === undefined || top === prev) return;
@@ -1553,7 +1614,7 @@ window.addEventListener('scroll', (e) => {
 const media = {
   el: null, ready: false,
   start() {
-    if (this.ready || !('mediaSession' in navigator) || (state.view !== 'stage' && state.view !== 'record')) return;
+    if (this.ready || !('mediaSession' in navigator) || (!inputView())) return;
     const a = new Audio(URL.createObjectURL(wavBlob(new Float32Array(4000), 8000))); a.loop = true; a.volume = 0.05; this.el = a;
     const acts = { nexttrack: 'Media:next', previoustrack: 'Media:prev', seekforward: 'Media:next', seekbackward: 'Media:prev', play: 'Media:play', pause: 'Media:play', stop: 'Media:play' };
     for (const [action, k] of Object.entries(acts)) {
@@ -1567,21 +1628,21 @@ const media = {
 /* Remotes in "shorts" mode inject finger swipes. Touch events keep firing even when the page scrolls. */
 let swipe = null;
 window.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY, t: performance.now(), target: e.target }; }, { capture: true, passive: true });
-let lastTapAt = 0;
+let lastTapAt = 0, lastGestureInfo = '';
 const gestureAllowed = (start) => !!state.learning || (!start.target.closest('.knob, .sheet, .sheet-bg') && !sheetOpen); // a ring injects at the screen centre, wherever that lands
 function judgeSwipe(dx, dy, e, min = 35) {
   let k = '';
   if (Math.abs(dy) >= min && Math.abs(dx) <= Math.abs(dy) * 0.8) k = dy < 0 ? 'Swipe↑' : 'Swipe↓';
   else if (Math.abs(dx) >= min && Math.abs(dy) <= Math.abs(dx) * 0.8) k = dx < 0 ? 'Swipe←' : 'Swipe→';
   if (!k || !swipe || swipe.done) return false;
-  swipe.done = true; logSignal('swipe', k, e);
+  swipe.done = true; lastGestureInfo = `y ${Math.round(swipe.y)}→${Math.round(swipe.y + dy)}, x ${Math.round(swipe.x)}→${Math.round(swipe.x + dx)}`; logSignal('swipe', k, { code: lastGestureInfo });
   if (isMapped(k) && gestureAllowed(swipe)) handleSignal(k, { preventDefault() {}, target: swipe.target });
   return true;
 }
 // judged while the finger is still moving, so a remote's gesture reacts at once instead of on release
 window.addEventListener('touchmove', (e) => {
   if (!swipe || swipe.done) return; const t = e.changedTouches[0]; swipe.lx = t.clientX; swipe.ly = t.clientY;
-  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (!inputView()) return;
   if (performance.now() - swipe.t > 900) return;
   judgeSwipe(t.clientX - swipe.x, t.clientY - swipe.y, e);
 }, { capture: true, passive: true });
@@ -1589,7 +1650,7 @@ function endTouch(e, cancelled) {
   if (!swipe) return; const t = e.changedTouches && e.changedTouches[0]; const start = swipe; swipe = null;
   const ex = t ? t.clientX : (start.lx ?? start.x), ey = t ? t.clientY : (start.ly ?? start.y);
   const dx = ex - start.x, dy = ey - start.y, dt = performance.now() - start.t;
-  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (!inputView()) return;
   if (start.done) return;
   if (!cancelled && dt < 450 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
     // a short still touch is a tap; a ring's centre button usually injects one (or two) at the screen centre
@@ -1610,7 +1671,7 @@ window.addEventListener('touchcancel', (e) => endTouch(e, true), { capture: true
 /* Some remotes enumerate as a gamepad. */
 const padState = {};
 function pollGamepads() {
-  if (state.view === 'stage' || state.view === 'record') {
+  if (inputView()) {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const g of pads) { if (!g) continue; g.buttons.forEach((b, i) => { const id = g.index + ':' + i; if (b.pressed && !padState[id]) { const k = 'Pad' + i; diagLog(`gamepad  button ${i} (${g.id.slice(0, 24)})`); logSignal('gamepad', k, { code: g.id.slice(0, 24) }); if (isMapped(k)) handleSignal(k, { preventDefault() {}, target: document.body }); } padState[id] = b.pressed; }); }
   }
@@ -1636,7 +1697,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (reloading || !navigator.serviceWorker.controller) return; reloading = true;
       // a new build took over: reload right away unless a presentation or a recording is in progress
-      if (state.view === 'stage' || state.view === 'record' || aiJob.running) toast('새 버전이 준비됐습니다. 홈으로 나가면 적용됩니다');
+      if (inputView() || aiJob.running) toast('새 버전이 준비됐습니다. 홈으로 나가면 적용됩니다');
       else location.reload();
     });
   } catch {}
