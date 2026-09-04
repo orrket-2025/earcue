@@ -33,7 +33,7 @@
   --r:14px;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior-y:none}
 body{
   margin:0; font-family:var(--sans); color:var(--text); font-size:16px; line-height:1.5;
   background:
@@ -171,7 +171,7 @@ select.field{appearance:none;background-image:linear-gradient(180deg,var(--well-
 .stage{gap:0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
 .stage.swipe-mode{touch-action:none;overscroll-behavior:none}
 .stage.swipe-mode .knob{touch-action:none}
-body.swipe-lock{overflow:hidden;height:100dvh}
+body.swipe-lock{overflow:hidden;height:100dvh;touch-action:none;overscroll-behavior:none}
 body.swipe-lock .app{height:100dvh;overflow:hidden}
 body.swipe-lock .topbar{padding-top:calc(6px + env(safe-area-inset-top));min-height:48px}
 body.swipe-lock .brand b{font-size:20px}
@@ -1484,31 +1484,42 @@ const media = {
 let swipe = null;
 window.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY, t: performance.now(), target: e.target }; }, { capture: true, passive: true });
 let lastTapAt = 0;
-window.addEventListener('touchend', (e) => {
-  if (!swipe) return; const t = e.changedTouches[0]; const dx = t.clientX - swipe.x, dy = t.clientY - swipe.y, dt = performance.now() - swipe.t; const start = swipe; swipe = null;
+const gestureAllowed = (start) => !!state.learning || (!start.target.closest('.knob, .sheet, .sheet-bg') && !sheetOpen); // a ring injects at the screen centre, wherever that lands
+function judgeSwipe(dx, dy, e) {
+  let k = '';
+  if (Math.abs(dy) >= 35 && Math.abs(dx) <= Math.abs(dy) * 0.8) k = dy < 0 ? 'Swipe↑' : 'Swipe↓';
+  else if (Math.abs(dx) >= 35 && Math.abs(dy) <= Math.abs(dx) * 0.8) k = dx < 0 ? 'Swipe←' : 'Swipe→';
+  if (!k || !swipe || swipe.done) return false;
+  swipe.done = true; logSignal('swipe', k, e);
+  if (isMapped(k) && gestureAllowed(swipe)) handleSignal(k, { preventDefault() {}, target: swipe.target });
+  return true;
+}
+// judged while the finger is still moving, so a remote's gesture reacts at once instead of on release
+window.addEventListener('touchmove', (e) => {
+  if (!swipe || swipe.done) return; const t = e.changedTouches[0]; swipe.lx = t.clientX; swipe.ly = t.clientY;
   if (state.view !== 'stage' && state.view !== 'record') return;
-  const onControl = !!start.target.closest('button,input,select,textarea,a,.knob,.switch,.rocker,.seg');
-  // a ring injects its gesture at the screen centre, wherever that lands, so the whole stage counts
-  const cueArea = !start.target.closest('.knob, .sheet, .sheet-bg') && !sheetOpen;
-  // a short still touch is a tap; a ring's centre button usually injects one (or two) at the screen centre
-  if (dt < 450 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
-    if (onControl) return; // the app's own buttons keep their click behaviour
+  if (performance.now() - swipe.t > 900) return;
+  judgeSwipe(t.clientX - swipe.x, t.clientY - swipe.y, e);
+}, { capture: true, passive: true });
+function endTouch(e, cancelled) {
+  if (!swipe) return; const t = e.changedTouches && e.changedTouches[0]; const start = swipe; swipe = null;
+  const ex = t ? t.clientX : (start.lx ?? start.x), ey = t ? t.clientY : (start.ly ?? start.y);
+  const dx = ex - start.x, dy = ey - start.y, dt = performance.now() - start.t;
+  if (state.view !== 'stage' && state.view !== 'record') return;
+  if (start.done) return;
+  if (!cancelled && dt < 450 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+    // a short still touch is a tap; a ring's centre button usually injects one (or two) at the screen centre
+    if (start.target.closest('button,input,select,textarea,a,.knob,.switch,.rocker,.seg')) return; // the app's own buttons keep their click behaviour
     const dbl = performance.now() - lastTapAt < 350; lastTapAt = dbl ? 0 : performance.now();
     const k = dbl ? 'DoubleTap' : 'Tap'; logSignal('tap', k, e);
-    if (!isMapped(k)) return;
-    if (!state.learning && !cueArea) return;
-    handleSignal(k, { preventDefault() {}, target: start.target }); return;
+    if (isMapped(k) && gestureAllowed(start)) handleSignal(k, { preventDefault() {}, target: start.target });
+    return;
   }
   if (dt > 900) return;
-  let k = '';
-  if (Math.abs(dy) >= 45 && Math.abs(dx) <= Math.abs(dy) * 0.8) k = dy < 0 ? 'Swipe↑' : 'Swipe↓';
-  else if (Math.abs(dx) >= 45 && Math.abs(dy) <= Math.abs(dx) * 0.8) k = dx < 0 ? 'Swipe←' : 'Swipe→';
-  if (!k) return;
-  logSignal('swipe', k, e);
-  if (!isMapped(k)) return;
-  if (!state.learning && !cueArea) return; // swipes on controls stay ordinary
-  handleSignal(k, { preventDefault() {}, target: start.target });
-}, { capture: true, passive: true });
+  swipe = start; judgeSwipe(dx, dy, e); swipe = null;
+}
+window.addEventListener('touchend', (e) => endTouch(e, false), { capture: true, passive: true });
+window.addEventListener('touchcancel', (e) => endTouch(e, true), { capture: true, passive: true });
 /* Some remotes enumerate as a gamepad. */
 const padState = {};
 function pollGamepads() {
