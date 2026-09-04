@@ -281,7 +281,7 @@ body.swipe-lock .tile{min-height:84px}
    EarCue · 이어큐 — presenter's earpiece prompter (prototype)
    ===================================================================== */
 'use strict';
-const APP_VERSION = 'lab-1';
+const APP_VERSION = 'lab-2';
 /* Inside the Android app the web page runs in a WebView with Capacitor; native plugins replace the
    browser's speech APIs and expose hardware keys. In a plain browser none of this exists. */
 const CAP = window.Capacitor || null;
@@ -796,7 +796,7 @@ const listener = {
       this.heard = text.trim();
       this.onMatch && this.onMatch(this.heard);
     };
-    r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('마이크 사용이 허용되지 않았습니다'); this.stop(); settings.listen = false; saveSettings(); renderStageStatus(); } };
+    r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { toast('마이크 사용이 허용되지 않았습니다'); this.stop(); settings.listen = false; saveSettings(); tileSet('#swListen', false); renderStageStatus(); } };
     r.onend = () => { this.skip = 0; if (this.on && !this.suspended) { clearTimeout(this.restartTimer); this.restartTimer = setTimeout(() => { if (this.on && !this.suspended) { try { r.start(); } catch {} } }, 300); } };
     this.rec = r; this.on = true; this.suspended = false; this.skip = 0;
     try { r.start(); } catch {}
